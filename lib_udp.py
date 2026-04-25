@@ -69,16 +69,21 @@ class UDPBroadcaster:
             return
         
         try:
-            logtick, degree, cmX, setspeed,r0, r1, r2, r3 = data_tuple
+            if len(data_tuple) < 7:
+                return
+
+            # Keep the UDP stream compatible with trialUDPuser.py:
+            # logtick + degree + cmX + setspeed + three reserved values.
+            logtick, degree, cmX, setspeed, r0, r1, r2 = data_tuple[:7]
             
             # Pack data dalam format binary (little-endian)
             # Format: <I (uint32) + 6d (6x double)
-            packet = struct.pack('<Iddddddd', 
+            packet = struct.pack('<Idddddd',
                                 logtick, 
                                 degree, 
                                 cmX, 
                                 setspeed, 
-                                r0,r1, r2, r3)
+                                r0, r1, r2)
             
             # Broadcast ke network
             self.sock.sendto(packet, (self.broadcast_ip, self.port))

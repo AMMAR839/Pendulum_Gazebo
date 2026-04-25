@@ -26,7 +26,7 @@ class UDPReceiver:
             port: UDP port to listen on
             log_dir: Directory untuk save CSV files
         """
-        self.port = 4000#port
+        self.port = port
         self.log_dir = log_dir
         
         # Create log directory

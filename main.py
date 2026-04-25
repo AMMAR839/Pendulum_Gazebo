@@ -9,7 +9,7 @@ from threading import Lock
 from serial.tools import list_ports
 
 from lib_stick import init_joystick, joystick_sender
-from lib_com import open_serial,scan_ports,read_control_status, send_gains, send_reset
+from lib_com import open_serial,scan_ports,read_control_status, send_gains, send_reset, make_packet
 from lib_data import DataLogger
 from lib_udp import UDPBroadcaster
 
@@ -18,17 +18,28 @@ from lib_gui import PendulumGUI
 # ============================================================
 # KONFIGURASI
 # ============================================================
-PORT = "COM4"
-BAUD = 115200
+PORT = os.environ.get("PENDULUM_PORT", "COM4")
+BAUD = int(os.environ.get("PENDULUM_BAUD", "115200"))
+NO_JOYSTICK = os.environ.get("PENDULUM_NO_JOYSTICK", "0") == "1"
+IS_SIM_PORT = PORT.startswith("/tmp/pendulum_sim_serial") or os.environ.get("PENDULUM_SIM", "0") == "1"
 FPS = 50
 
-DEFAULT_GAINS = {
-	"K_TH": -2.50 * 57.0 * 12.0,
-	"K_TH_D": -0.030 * 57.0 * 18.0,
-	"K_X": 3.0,
-	"K_X_D": -1.6 * 2.0,
-	"K_X_INT": 0.0
-}
+if IS_SIM_PORT:
+	DEFAULT_GAINS = {
+		"K_TH": 8.8,
+		"K_TH_D": 1.8,
+		"K_X": 4.0,
+		"K_X_D": 2.0,
+		"K_X_INT": 0.4
+	}
+else:
+	DEFAULT_GAINS = {
+		"K_TH": -2.50 * 57.0 * 12.0,
+		"K_TH_D": -0.030 * 57.0 * 18.0,
+		"K_X": 3.0,
+		"K_X_D": -1.6 * 2.0,
+		"K_X_INT": 0.0
+	}
 
 X_MIN_CM = -40
 X_MAX_CM = 40.0
@@ -96,6 +107,7 @@ class PendulumMonitor:
 		self.joystick = None
 		self.thread_rx = None
 		self.thread_tx = None
+		self.command_seq = 0
 
 		self.running = True
 		self.gains_sent = False
@@ -110,6 +122,7 @@ class PendulumMonitor:
 		self.r1_hist = []
 		self.theta_dot_hist = []
 		self.x_center_hist = []
+		self.x_mode_hist = []
 		self.max_hist = 1000
 		self.ctx = {
 				"is_running": 0,
@@ -147,14 +160,17 @@ class PendulumMonitor:
 			self.serial = open_serial(PORT, BAUD)
 			print(f"Serial opened: {PORT} @ {BAUD}")
 
-			self.joystick = init_joystick(0)
+			if NO_JOYSTICK:
+				print("Joystick disabled by PENDULUM_NO_JOYSTICK=1")
+			else:
+				self.joystick = init_joystick(0)
 
-			self.thread_tx = threading.Thread(
-				target=joystick_sender,
-				args=(self.joystick, self.serial, FPS),
-				daemon=True
-			)
-			self.thread_tx.start()
+				self.thread_tx = threading.Thread(
+					target=joystick_sender,
+					args=(self.joystick, self.serial, FPS),
+					daemon=True
+				)
+				self.thread_tx.start()
 
 			self.thread_rx = threading.Thread(
 				target=read_control_status,
@@ -184,6 +200,7 @@ class PendulumMonitor:
 		self.r1_hist.clear()
 		self.theta_dot_hist.clear()
 		self.x_center_hist.clear()
+		self.x_mode_hist.clear()
 		
 
 	def stop_graph(self):
@@ -196,6 +213,7 @@ class PendulumMonitor:
 		self.r1_hist.clear()
 		self.theta_dot_hist.clear()
 		self.x_center_hist.clear()
+		self.x_mode_hist.clear()
 
 	def on_control_status(self, sample_tuple):
 		logtick, degree, cmX, setspeed, r1, theta_dot, theta, x_center, mode = sample_tuple
@@ -241,6 +259,7 @@ class PendulumMonitor:
 			self.r1_hist.clear()
 			self.theta_dot_hist.clear()
 			self.x_center_hist.clear()
+			self.x_mode_hist.clear()
 		if len(self.t_raw) > self.max_hist:
 			
 			n = len(self.t_raw)
@@ -258,6 +277,7 @@ class PendulumMonitor:
 			del self.r1_hist[:cut]
 			del self.theta_dot_hist[:cut]
 			del self.x_center_hist[:cut]
+			del self.x_mode_hist[:cut]
 			aftercut = len(self.t_raw)
 			print(aftercut)
 			#self.t_raw = self.t_raw[-self.max_hist:]
@@ -360,25 +380,33 @@ class PendulumMonitor:
 	def toggle_udp(self):
 		self.udp_broadcaster.toggle()
 		return self.udp_broadcaster.enabled
-	
-	    # =========================
-    # XBOX CONTROL ACTIONS
-    # =========================
+
+	def send_button_mask(self, buttons, label):
+		if not self.serial:
+			print(f"[{label}] Serial not connected")
+			return
+		packet = make_packet(self.command_seq, 0, 0, 0, 0, buttons)
+		self.command_seq = (self.command_seq + 1) & 0xFF
+		self.serial.write(packet)
+		print(f"[{label}] command sent")
+	# =========================
+	# XBOX CONTROL ACTIONS
+	# =========================
 	def homing(self):
 		print("[XBOX] HOMING")
-        # TODO: kirim command homing ke controller
+		self.send_button_mask(1 << 3, "HOMING")
 	
 	def finish(self):
 		print("[XBOX] FINISH")
-        # TODO: stop system / end routine
+		self.send_button_mask(1 << 1, "FINISH")
 
 	def balance(self):
 		print("[XBOX] BALANCE")
-        # TODO: switch to balance mode
+		self.send_button_mask(1 << 0, "BALANCE")
 
 	def swing_up(self):
 		print("[XBOX] SWING UP")
-        # TODO: trigger swing-up control
+		self.send_button_mask(1 << 2, "SWING UP")
 
 
 	def run(self):
