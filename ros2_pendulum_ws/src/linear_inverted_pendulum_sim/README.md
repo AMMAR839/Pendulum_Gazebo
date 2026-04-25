@@ -23,10 +23,19 @@ source install/setup.bash
 ros2 launch linear_inverted_pendulum_sim sim.launch.py
 ```
 
+Setiap launch otomatis memakai `GZ_PARTITION` unik, supaya data `/clock`
+dan joint-state tidak tercampur dengan proses Gazebo lama.
+
 Untuk headless:
 
 ```bash
 ros2 launch linear_inverted_pendulum_sim sim.launch.py gz_args:="-r -s empty.sdf"
+```
+
+Untuk test force langsung tanpa controller serial:
+
+```bash
+ros2 launch linear_inverted_pendulum_sim sim.launch.py enable_serial_bridge:=false
 ```
 
 Launch ini membuat pseudo serial di:
@@ -57,10 +66,17 @@ Alur pemakaian:
 
 Jika memakai joystick fisik, hilangkan `PENDULUM_NO_JOYSTICK=1`.
 
+Jika Gazebo pernah ditutup paksa dan simulasi terlihat aneh, bersihkan proses
+headless lama sebelum launch ulang:
+
+```bash
+pkill -f '^gz sim -r -s empty\.sdf$'
+```
+
 ## Topic ROS 2 penting
 
 - `/joint_states`: posisi dan kecepatan `cart_slider` serta `pendulum_hinge`.
-- `/pendulum/cart_velocity_cmd`: setpoint kecepatan cart dari controller internal dalam m/s.
+- `/pendulum/cart_velocity_cmd`: setpoint kecepatan cart dari controller internal dalam m/s, bukan input langsung dari Gazebo.
 - `/pendulum/cart_force_cmd`: gaya yang dikirim ke joint cart di Gazebo.
 - `/pendulum/sim_state`: data ringkas `[degree, cmX, setspeed, energy, theta_dot_rad, theta_rad, x_center_cm, mode]`.
 

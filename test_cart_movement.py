@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Simple test: check if cart moves when we publish velocity command
+Simple test: check if cart moves when we publish Gazebo force command.
+
+Run Gazebo without the serial bridge so this script is the only force source:
+ros2 launch linear_inverted_pendulum_sim sim.launch.py enable_serial_bridge:=false
 """
 import rclpy
 from rclpy.node import Node
@@ -11,7 +14,7 @@ import time
 class SimpleCartTest(Node):
     def __init__(self):
         super().__init__('simple_cart_test')
-        self.cmd_pub = self.create_publisher(Float64, '/pendulum/cart_velocity_cmd', 10)
+        self.force_pub = self.create_publisher(Float64, '/pendulum/cart_force_cmd', 10)
         self.sub = self.create_subscription(JointState, 'joint_states', self._joint_cb, 10)
         
         self.positions = {}
@@ -22,14 +25,14 @@ class SimpleCartTest(Node):
             self.positions[joint] = msg.position[i]
     
     def test1_constant_velocity(self):
-        """Test 1: Push cart with constant velocity"""
-        print("\n=== Test 1: Constant Velocity (0.5 m/s for 5 sec) ===")
+        """Test 1: Push cart with constant force."""
+        print("\n=== Test 1: Constant Force (+15 N for 5 sec) ===")
         start = time.time()
         
         while time.time() - start < 5.0:
             msg = Float64()
-            msg.data = 0.5  # 0.5 m/s right
-            self.cmd_pub.publish(msg)
+            msg.data = 15.0
+            self.force_pub.publish(msg)
             
             cart_x = self.positions.get('cart_slider', 0.0)
             pend_theta = self.positions.get('pendulum_hinge', 0.0)
@@ -40,22 +43,22 @@ class SimpleCartTest(Node):
         print("\nTest 1 complete. Did cart move? Check values above.")
     
     def test2_oscillation(self):
-        """Test 2: Oscillate between +0.3 and -0.3"""
-        print("\n=== Test 2: Oscillation ±0.3 m/s ===")
+        """Test 2: Oscillate with alternating force."""
+        print("\n=== Test 2: Oscillation ±15 N ===")
         
         for cycle in range(5):
-            for direction in [0.3, -0.3]:
+            for direction in [15.0, -15.0]:
                 start = time.time()
                 while time.time() - start < 1.0:
                     msg = Float64()
                     msg.data = float(direction)
-                    self.cmd_pub.publish(msg)
+                    self.force_pub.publish(msg)
                     
                     cart_x = self.positions.get('cart_slider', 0.0)
                     pend_theta = self.positions.get('pendulum_hinge', 0.0)
                     
                     elapsed = time.time() - start
-                    print(f"cycle {cycle} dir={direction:+.1f} t={elapsed:.2f}s  "
+                    print(f"cycle {cycle} force={direction:+.1f}N t={elapsed:.2f}s  "
                           f"cart={cart_x:+.4f}m  pend={pend_theta:+.4f}rad")
                     time.sleep(0.05)
 

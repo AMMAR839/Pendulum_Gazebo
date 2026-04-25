@@ -178,7 +178,7 @@
     <child link="pendulum_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <dynamics damping="0.0003" friction="0.000001"/>
+    <dynamics damping="0.006" friction="0.00001"/>
   </joint>
 
   <link name="pendulum_link">

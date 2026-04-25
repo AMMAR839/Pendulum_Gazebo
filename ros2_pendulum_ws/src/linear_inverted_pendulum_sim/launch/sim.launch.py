@@ -2,7 +2,13 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    LogInfo,
+    SetEnvironmentVariable,
+)
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -19,8 +25,10 @@ def generate_launch_description():
     robot_description_xml = xacro.process_file(robot_description_file).toxml()
 
     gz_args = LaunchConfiguration("gz_args")
+    gz_partition = LaunchConfiguration("gz_partition")
     serial_link = LaunchConfiguration("serial_link")
     status_rate_hz = LaunchConfiguration("status_rate_hz")
+    enable_serial_bridge = LaunchConfiguration("enable_serial_bridge")
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -82,6 +90,7 @@ def generate_launch_description():
         executable="sim_serial_bridge",
         name="pendulum_sim_serial_bridge",
         output="screen",
+        condition=IfCondition(enable_serial_bridge),
         parameters=[
             {
                 "serial_symlink": serial_link,
@@ -99,6 +108,14 @@ def generate_launch_description():
                 description="Arguments passed to Gazebo Sim. Use '-r -s empty.sdf' for headless.",
             ),
             DeclareLaunchArgument(
+                "gz_partition",
+                default_value=f"pendulum_{os.getpid()}",
+                description=(
+                    "Gazebo Transport partition. The per-launch default prevents "
+                    "old Gazebo instances from mixing /clock and joint_state data."
+                ),
+            ),
+            DeclareLaunchArgument(
                 "serial_link",
                 default_value="/tmp/pendulum_sim_serial",
                 description="Pseudo-serial symlink used by the existing Python GUI.",
@@ -108,6 +125,13 @@ def generate_launch_description():
                 default_value="50.0",
                 description="Status packet rate sent to the pseudo serial port.",
             ),
+            DeclareLaunchArgument(
+                "enable_serial_bridge",
+                default_value="true",
+                description="Start the pseudo-serial controller bridge.",
+            ),
+            SetEnvironmentVariable("GZ_PARTITION", gz_partition),
+            LogInfo(msg=["Gazebo Transport partition: ", gz_partition]),
             gazebo,
             robot_state_publisher,
             spawn_robot,

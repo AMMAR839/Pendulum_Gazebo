@@ -68,25 +68,33 @@ class SimSerialBridge(Node):
         self.declare_parameter("swing_centering_gain", 0.90)
         self.declare_parameter("swing_damping_gain", 0.25)
         self.declare_parameter("swing_kick_mps", 0.45)
-        self.declare_parameter("balance_capture_deg", 12.0)
-        self.declare_parameter("balance_capture_rate_rad_s", 2.8)
-        self.declare_parameter("balance_fallback_deg", 35.0)
-        self.declare_parameter("balance_capture_cart_pos_m", 0.14)
-        self.declare_parameter("balance_capture_cart_vel_mps", 0.45)
-        self.declare_parameter("lqr_catch_deg", 32.0)
-        self.declare_parameter("lqr_catch_rate_rad_s", 8.0)
+        self.declare_parameter("balance_capture_deg", 18.0)
+        self.declare_parameter("balance_capture_rate_rad_s", 6.0)
+        self.declare_parameter("balance_fallback_deg", 45.0)
+        self.declare_parameter("balance_capture_cart_pos_m", 0.32)
+        self.declare_parameter("balance_capture_cart_vel_mps", 1.00)
+        self.declare_parameter("lqr_catch_deg", 45.0)
+        self.declare_parameter("lqr_catch_rate_rad_s", 14.0)
         self.declare_parameter("catch_force_limit_n", 100.0)
         self.declare_parameter("balance_force_limit_n", 82.0)
-        self.declare_parameter("balance_integral_force_gain", 6.0)
+        self.declare_parameter("balance_integral_force_gain", 3.0)
+        self.declare_parameter("balance_centering_force_gain", 36.0)
+        self.declare_parameter("balance_cart_damping_force_gain", 10.0)
+        self.declare_parameter("balance_theta_kp", 100.0)
+        self.declare_parameter("balance_theta_kd", 25.0)
+        self.declare_parameter("balance_centering_accel_gain", 5.0)
+        self.declare_parameter("balance_cart_damping_accel_gain", 3.5)
         self.declare_parameter("force_to_velocity_gain", 0.022)
-        self.declare_parameter("lqr_q_x", 20.0)
-        self.declare_parameter("lqr_q_x_dot", 8.0)
-        self.declare_parameter("lqr_q_theta", 220.0)
-        self.declare_parameter("lqr_q_theta_dot", 22.0)
-        self.declare_parameter("lqr_r", 0.22)
-        self.declare_parameter("velocity_servo_p", 180.0)
-        self.declare_parameter("velocity_servo_i", 45.0)
-        self.declare_parameter("velocity_servo_d", 8.0)
+
+        self.declare_parameter("lqr_q_x", 40.0)
+        self.declare_parameter("lqr_q_x_dot", 12.0)
+        self.declare_parameter("lqr_q_theta", 600.0)
+        self.declare_parameter("lqr_q_theta_dot", 80.0)
+        self.declare_parameter("lqr_r", 0.12)
+
+        self.declare_parameter("velocity_servo_p", 80.0)
+        self.declare_parameter("velocity_servo_i", 0.0)
+        self.declare_parameter("velocity_servo_d", 4.0)
         self.declare_parameter("effort_limit_n", 100.0)
 
         self.serial_symlink = str(self.get_parameter("serial_symlink").value)
@@ -100,6 +108,12 @@ class SimSerialBridge(Node):
         self.cart_mass = float(self.get_parameter("cart_mass_kg").value)
         self.pendulum_mass = float(self.get_parameter("pendulum_mass_kg").value)
         self.pendulum_com = float(self.get_parameter("pendulum_com_m").value)
+        self.start_time = time.monotonic()
+        self.swing_state = "CALC"
+        self.swing_target_v = 0.0
+        self.energy_now = 0.0
+        self.energy_target = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
+
         self.swing_gain = float(self.get_parameter("swing_gain").value)
         self.swing_centering_gain = float(
             self.get_parameter("swing_centering_gain").value
@@ -138,6 +152,20 @@ class SimSerialBridge(Node):
         self.balance_integral_force_gain = float(
             self.get_parameter("balance_integral_force_gain").value
         )
+        self.balance_centering_force_gain = float(
+            self.get_parameter("balance_centering_force_gain").value
+        )
+        self.balance_cart_damping_force_gain = float(
+            self.get_parameter("balance_cart_damping_force_gain").value
+        )
+        self.balance_theta_kp = float(self.get_parameter("balance_theta_kp").value)
+        self.balance_theta_kd = float(self.get_parameter("balance_theta_kd").value)
+        self.balance_centering_accel_gain = float(
+            self.get_parameter("balance_centering_accel_gain").value
+        )
+        self.balance_cart_damping_accel_gain = float(
+            self.get_parameter("balance_cart_damping_accel_gain").value
+        )
         self.force_to_velocity_gain = float(
             self.get_parameter("force_to_velocity_gain").value
         )
@@ -171,7 +199,6 @@ class SimSerialBridge(Node):
         self.last_buttons = 0
         self.mode_started = time.monotonic()
         self.last_control_time = time.monotonic()
-        self.start_time = time.monotonic()
 
         self.gains = {
             "K_TH": 8.8,
@@ -215,6 +242,65 @@ class SimSerialBridge(Node):
             "Catch controller gain (force input): "
             + ", ".join(f"{gain:.2f}" for gain in self.catch_lqr_gain)
         )
+
+    def _swing_up_energy_command_locked(self, theta_top, dt):
+        energy = self._energy(theta_top)
+        target_energy = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
+
+        self.energy_now = energy
+        self.energy_target = target_energy
+
+        theta_deg = math.degrees(theta_top)
+
+        # Jika sudah dekat atas, langsung serahkan ke balance.
+        if self._ready_for_balance_locked(theta_top):
+            self.x_center_m = clamp(
+                self.cart_x_m,
+                -self.rail_limit + 0.08,
+                self.rail_limit - 0.08,
+            )
+            self._set_mode_locked(MODE_BALANCE)
+            self.swing_state = "CALC"
+            force = self._upright_pid_force_locked(
+                theta_top,
+                dt,
+                self.balance_force_limit_n,
+            )
+            return self._force_to_command_hint(force), force
+
+        # Di sekitar posisi atas, gunakan LQR catch untuk memperlambat ayunan
+        # dan membawa state masuk ke capture window balance.
+        if self._in_lqr_catch_region_locked(theta_top):
+            self.swing_state = "CALC"
+            force = self._state_feedback_force_locked(
+                self.catch_lqr_gain,
+                theta_top,
+                dt,
+                self.catch_force_limit_n,
+            )
+            return self._force_to_command_hint(force), force
+
+        phase = self.pendulum_vel_radps * math.cos(theta_top)
+        energy_error = energy - target_energy
+        force = 38.0 * self.swing_gain * energy_error * phase
+        force -= 42.0 * self.cart_x_m + 16.0 * self.cart_v_mps
+
+        # Dari posisi bawah, energy law bernilai nol karena theta_dot masih nol.
+        # Beri kick kecil; bila cart sudah tidak di tengah, tendang ke arah tengah.
+        if abs(theta_deg) > 160.0 and abs(self.pendulum_vel_radps) < 0.60:
+            if abs(self.cart_x_m) > 0.04:
+                kick_direction = -math.copysign(1.0, self.cart_x_m)
+            else:
+                elapsed = time.monotonic() - self.swing_state_started
+                kick_direction = 1.0 if int(elapsed / 0.45) % 2 == 0 else -1.0
+            force += kick_direction * max(35.0, 70.0 * self.swing_kick_mps)
+
+        # Jangan terus mendorong keluar saat cart sudah dekat limit rel.
+        if abs(self.cart_x_m) > self.rail_limit - 0.045 and force * self.cart_x_m > 0.0:
+            force = -math.copysign(max(35.0, 0.5 * abs(force)), self.cart_x_m)
+
+        force = clamp(force, -self.catch_force_limit_n, self.catch_force_limit_n)
+        return self._force_to_command_hint(force), force
 
     def destroy_node(self):
         self.serial_running = False
@@ -363,6 +449,8 @@ class SimSerialBridge(Node):
             self._set_mode_locked(MODE_WAITING)
             self.manual_cmd_mps = 0.0
             self.cmd_mps = 0.0
+            self.last_buttons = 0
+            self.x_center_m = 0.0
             self.x_integral_cm_s = 0.0
         self._write_reset_ack(1)
 
@@ -372,6 +460,15 @@ class SimSerialBridge(Node):
         self.velocity_error_integral = 0.0
         self.prev_velocity_error = 0.0
         self.x_integral_cm_s = 0.0
+
+        if mode == MODE_SWING_UP:
+            self.x_center_m = 0.0
+            self.swing_state = "CALC"
+            self.swing_target_v = 0.0
+            self.swing_direction = 1.0
+            self.swing_state_started = time.monotonic()
+            self.energy_now = 0.0
+            self.energy_target = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
 
     def _control_and_status_timer(self):
         now = time.monotonic()
@@ -407,10 +504,10 @@ class SimSerialBridge(Node):
 
     def _compute_control_locked(self, theta_top, dt, now):
         if self.mode == MODE_WAITING:
-            return 0.0, None
+            return 0.0, 0.0
 
         if self.mode == MODE_FINISH:
-            return 0.0, None
+            return 0.0, 0.0
 
         if self.mode == MODE_HOMING:
             error = self.x_center_m - self.cart_x_m
@@ -429,59 +526,24 @@ class SimSerialBridge(Node):
             return 2.5 * (target - self.cart_x_m) - 0.20 * self.cart_v_mps, None
 
         if self.mode == MODE_SWING_UP:
-            if self._ready_for_balance_locked(theta_top):
-                self._set_mode_locked(MODE_BALANCE)
-                self.get_logger().info(
-                    f"Balance capture at theta={math.degrees(theta_top):.1f} deg"
-                )
-                force = self._state_feedback_force_locked(
-                    self.balance_lqr_gain,
-                    theta_top,
-                    dt,
-                    self.balance_force_limit_n,
-                )
-                return self._force_to_command_hint(force), force
-
-            if self._in_lqr_catch_region_locked(theta_top):
-                force = self._state_feedback_force_locked(
-                    self.catch_lqr_gain,
-                    theta_top,
-                    dt,
-                    self.catch_force_limit_n,
-                )
-                return self._force_to_command_hint(force), force
-
-            elapsed = now - self.mode_started
-            energy = self._energy(theta_top)
-            target_energy = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
-            energy_ratio = energy / max(target_energy, 1e-6)
-
-            if abs(theta_top) < math.radians(60.0) or energy_ratio > 0.82:
-                return self._catch_command_locked(theta_top), None
-
-            amplitude = min(
-                self.rail_limit - 0.06,
-                0.12 + 0.24 * (1.0 - min(1.0, energy_ratio)),
-            )
-            osc_freq = 0.90
-            center_bias = clamp(
-                -self.swing_centering_gain * self.cart_x_m,
-                -0.12,
-                0.12,
-            )
-            target_x = center_bias + amplitude * math.sin(2.0 * math.pi * osc_freq * elapsed)
-            return (
-                8.5 * (target_x - self.cart_x_m)
-                - (0.55 + self.swing_damping_gain) * self.cart_v_mps
-            ), None
+            return self._swing_up_energy_command_locked(theta_top, dt)
 
         if self.mode == MODE_BALANCE:
             if self._lost_balance_locked(theta_top):
                 self._set_mode_locked(MODE_SWING_UP)
                 return 0.0, None
 
-            force = self._state_feedback_force_locked(
-                self.balance_lqr_gain,
+            if (
+                abs(theta_top) < math.radians(12.0)
+                and abs(self.pendulum_vel_radps) < 1.5
+            ):
+                self.x_center_m += (0.0 - self.x_center_m) * clamp(
+                    0.18 * dt,
+                    0.0,
+                    1.0,
+                )
+
+            force = self._upright_pid_force_locked(
                 theta_top,
                 dt,
                 self.balance_force_limit_n,
@@ -528,24 +590,28 @@ class SimSerialBridge(Node):
         return clamp(effort, -self.effort_limit_n, self.effort_limit_n)
 
     def _ready_for_balance_locked(self, theta_top):
+        capture_cart_pos = min(
+            self.balance_capture_cart_pos,
+            max(0.05, self.rail_limit - 0.004),
+        )
         return (
             abs(theta_top) < self.balance_capture
             and abs(self.pendulum_vel_radps) < self.balance_capture_rate
-            and abs(self.cart_x_m) < self.balance_capture_cart_pos
+            and abs(self.cart_x_m) < capture_cart_pos
             and abs(self.cart_v_mps) < self.balance_capture_cart_vel
         )
 
     def _lost_balance_locked(self, theta_top):
         return (
             abs(theta_top) > self.balance_fallback
-            or abs(self.cart_x_m) > (self.rail_limit - 0.02)
+            or abs(self.cart_x_m) > (self.rail_limit + 0.02)
         )
 
     def _in_lqr_catch_region_locked(self, theta_top):
         return (
             abs(theta_top) < self.lqr_catch_angle
             and abs(self.pendulum_vel_radps) < self.lqr_catch_rate
-            and abs(self.cart_x_m) < (self.rail_limit - 0.04)
+            and abs(self.cart_x_m) < (self.rail_limit - 0.004)
         )
 
     def _catch_command_locked(self, theta_top):
@@ -574,10 +640,64 @@ class SimSerialBridge(Node):
         force = (
             -gain[0] * state[0]
             -gain[1] * state[1]
-            +gain[2] * state[2]
-            +gain[3] * state[3]
+            + gain[2] * state[2]
+            + gain[3] * state[3]
         )
+
+        force -= self.balance_centering_force_gain * x_error_m
+        force -= self.balance_cart_damping_force_gain * self.cart_v_mps
         force -= self.balance_integral_force_gain * self.x_integral_cm_s
+        force = self._soft_rail_guard_force_locked(force, force_limit_n)
+        return clamp(force, -force_limit_n, force_limit_n)
+
+    def _upright_pid_force_locked(self, theta_top, dt, force_limit_n):
+        x_error_m = self.cart_x_m - self.x_center_m
+        self.x_integral_cm_s = clamp(
+            self.x_integral_cm_s + x_error_m * dt,
+            -0.20,
+            0.20,
+        )
+
+        cos_theta = math.cos(theta_top)
+        if abs(cos_theta) < 0.25:
+            cos_theta = math.copysign(0.25, cos_theta if cos_theta else 1.0)
+
+        theta_feedback = (
+            self.balance_theta_kp * theta_top
+            + self.balance_theta_kd * self.pendulum_vel_radps
+        )
+        cart_accel = (
+            9.81 * math.sin(theta_top) + self.pendulum_com * theta_feedback
+        ) / cos_theta
+
+        center_scale = clamp(
+            1.0 - abs(theta_top) / max(self.balance_fallback, 1e-3),
+            0.0,
+            1.0,
+        )
+        cart_accel -= center_scale * (
+            self.balance_centering_accel_gain * x_error_m
+            + self.balance_cart_damping_accel_gain * self.cart_v_mps
+        )
+
+        force = (self.cart_mass + self.pendulum_mass) * cart_accel
+        force -= self.balance_integral_force_gain * self.x_integral_cm_s
+        force = self._soft_rail_guard_force_locked(force, force_limit_n)
+        return clamp(force, -force_limit_n, force_limit_n)
+
+    def _soft_rail_guard_force_locked(self, force, force_limit_n):
+        soft_limit = max(0.05, self.rail_limit - 0.09)
+        distance_past_soft_limit = abs(self.cart_x_m) - soft_limit
+        if distance_past_soft_limit <= 0.0:
+            return force
+
+        rail_direction = math.copysign(1.0, self.cart_x_m)
+        outward_velocity = max(0.0, self.cart_v_mps * rail_direction)
+        inward_force = 220.0 * distance_past_soft_limit + 35.0 * outward_velocity
+        force -= rail_direction * inward_force
+
+        if force * rail_direction > 0.0:
+            force = -rail_direction * min(force_limit_n, max(20.0, inward_force))
         return clamp(force, -force_limit_n, force_limit_n)
 
     def _force_to_command_hint(self, force):

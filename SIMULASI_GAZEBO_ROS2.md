@@ -29,10 +29,20 @@ source install/setup.bash
 ros2 launch linear_inverted_pendulum_sim sim.launch.py
 ```
 
+Launch ini memakai `GZ_PARTITION` unik per proses, jadi `/clock` dan
+`joint_state` dari Gazebo lama tidak ikut terbaca.
+
 Kalau ingin tanpa GUI Gazebo:
 
 ```bash
 ros2 launch linear_inverted_pendulum_sim sim.launch.py gz_args:="-r -s empty.sdf"
+```
+
+Kalau ingin menjalankan `test_cart_movement.py` atau `test_manual_swing.py`,
+matikan bridge controller supaya script menjadi satu-satunya publisher force:
+
+```bash
+ros2 launch linear_inverted_pendulum_sim sim.launch.py enable_serial_bridge:=false
 ```
 
 ## Jalankan GUI Python kamu ke simulasi
@@ -63,7 +73,17 @@ Jika kamu memakai joystick fisik, jalankan tanpa `PENDULUM_NO_JOYSTICK=1`.
 ```bash
 ros2 topic echo /joint_states
 ros2 topic echo /pendulum/sim_state
-ros2 topic pub /pendulum/cart_velocity_cmd std_msgs/msg/Float64 "{data: 0.2}"
+ros2 topic echo /pendulum/cart_force_cmd
 ```
 
-`/pendulum/cart_velocity_cmd` adalah command kecepatan cart dalam m/s.
+`/pendulum/cart_velocity_cmd` adalah setpoint internal bridge dalam m/s.
+Input yang benar-benar masuk ke Gazebo adalah `/pendulum/cart_force_cmd`,
+yang dipublish oleh `sim_serial_bridge`.
+
+Jika simulasi menampilkan waktu/RTF aneh atau cart bergerak sendiri, cek proses
+Gazebo lama:
+
+```bash
+pgrep -fa 'gz sim -r -s empty.sdf'
+pkill -f '^gz sim -r -s empty\.sdf$'
+```

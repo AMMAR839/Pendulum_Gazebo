@@ -385,9 +385,17 @@ class PendulumMonitor:
 		if not self.serial:
 			print(f"[{label}] Serial not connected")
 			return
-		packet = make_packet(self.command_seq, 0, 0, 0, 0, buttons)
+		with state_lock:
+			is_running = pendulum_state["running"]
+		if not is_running:
+			print(f"[{label}] ignored. Click START first.")
+			return
+		press_packet = make_packet(self.command_seq, 0, 0, 0, 0, buttons)
 		self.command_seq = (self.command_seq + 1) & 0xFF
-		self.serial.write(packet)
+		release_packet = make_packet(self.command_seq, 0, 0, 0, 0, 0)
+		self.command_seq = (self.command_seq + 1) & 0xFF
+		self.serial.write(press_packet)
+		self.serial.write(release_packet)
 		print(f"[{label}] command sent")
 	# =========================
 	# XBOX CONTROL ACTIONS
