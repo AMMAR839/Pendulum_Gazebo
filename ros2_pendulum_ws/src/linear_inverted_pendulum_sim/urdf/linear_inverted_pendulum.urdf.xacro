@@ -125,7 +125,7 @@
     <child link="cart_link"/>
     <origin xyz="0 0 ${pivot_z}" rpy="0 0 0"/>
     <axis xyz="1 0 0"/>
-    <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="220.0" velocity="3.0"/>
+    <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="360.0" velocity="4.0"/>
     <dynamics damping="0.02" friction="0.0005"/>
   </joint>
 
@@ -248,6 +248,9 @@
     </plugin>
     <plugin filename="gz-sim-apply-joint-force-system" name="gz::sim::systems::ApplyJointForce">
       <joint_name>cart_slider</joint_name>
+    </plugin>
+    <plugin filename="gz-sim-apply-joint-force-system" name="gz::sim::systems::ApplyJointForce">
+      <joint_name>pendulum_hinge</joint_name>
     </plugin>
   </gazebo>
 </robot>

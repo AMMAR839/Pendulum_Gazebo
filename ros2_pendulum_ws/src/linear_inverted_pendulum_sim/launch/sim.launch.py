@@ -72,6 +72,8 @@ def generate_launch_description():
             "@sensor_msgs/msg/JointState[gz.msgs.Model",
             "/model/linear_inverted_pendulum/joint/cart_slider/cmd_force"
             "@std_msgs/msg/Float64]gz.msgs.Double",
+            "/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force"
+            "@std_msgs/msg/Float64]gz.msgs.Double",
         ],
         remappings=[
             (
@@ -81,6 +83,10 @@ def generate_launch_description():
             (
                 "/model/linear_inverted_pendulum/joint/cart_slider/cmd_force",
                 "/pendulum/cart_force_cmd",
+            ),
+            (
+                "/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force",
+                "/pendulum/hinge_assist_force_cmd",
             ),
         ],
     )

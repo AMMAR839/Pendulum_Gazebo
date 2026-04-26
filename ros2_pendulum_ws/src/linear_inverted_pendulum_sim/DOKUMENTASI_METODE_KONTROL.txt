@@ -1,0 +1,986 @@
+DOKUMENTASI METODE KONTROL LINEAR INVERTED PENDULUM
+====================================================
+
+Dokumen ini menjelaskan metode yang dipakai pada simulasi ROS 2 Jazzy +
+Gazebo Harmonic di package:
+
+  ros2_pendulum_ws/src/linear_inverted_pendulum_sim
+
+File implementasi utama:
+
+  - linear_inverted_pendulum_sim/sim_serial_bridge.py
+  - launch/sim.launch.py
+  - urdf/linear_inverted_pendulum.urdf.xacro
+  - main.py, lib_com.py di root /home/ammar/Documents/Pendulum
+
+Ringkasan penting:
+
+  1. Tombol X masuk ke mode SWING_UP.
+  2. Swing-up membangun energi ayunan pendulum.
+  3. Saat pendulum dekat atas dan state aman, sistem otomatis masuk BALANCE.
+  4. Tombol A hanya manual override untuk memaksa BALANCE.
+  5. Balance utama memakai LQR force control pada cart.
+  6. Simulasi sekarang memakai balance_assist, yaitu torsi kecil di engsel
+     pendulum agar lebih mudah tegak. Ini bantuan simulasi, bukan hardware
+     pendulum pasif murni.
+
+
+1. MODEL FISIK GAZEBO
+=====================
+
+Model fisik didefinisikan di:
+
+  urdf/linear_inverted_pendulum.urdf.xacro
+
+Dimensi mengikuti manual LIP01:
+
+  - Travel rail: 0.78 m
+  - Base: 1.00 m x 0.35 m
+  - Cart mass: 1.20 kg
+  - Pendulum length: 0.40 m
+  - Pendulum mass: 0.20 kg
+  - Pendulum COM di controller: 0.20 m
+
+Potongan kode properti model:
+
+```xml
+<xacro:property name="travel" value="0.78"/>
+<xacro:property name="base_length" value="1.00"/>
+<xacro:property name="base_width" value="0.35"/>
+<xacro:property name="cart_mass" value="1.20"/>
+<xacro:property name="pendulum_length" value="0.40"/>
+<xacro:property name="pendulum_radius" value="0.004"/>
+<xacro:property name="pendulum_mass" value="0.20"/>
+```
+
+Cart bergerak pada joint prismatic `cart_slider`. Batas force dinaikkan supaya
+simulasi lebih mudah menangkap pendulum:
+
+```xml
+<joint name="cart_slider" type="prismatic">
+  <parent link="base_link"/>
+  <child link="cart_link"/>
+  <origin xyz="0 0 ${pivot_z}" rpy="0 0 0"/>
+  <axis xyz="1 0 0"/>
+  <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="360.0" velocity="4.0"/>
+  <dynamics damping="0.02" friction="0.0005"/>
+</joint>
+```
+
+Pendulum berputar pada joint continuous `pendulum_hinge`:
+
+```xml
+<joint name="pendulum_hinge" type="continuous">
+  <parent link="cart_link"/>
+  <child link="pendulum_link"/>
+  <origin xyz="0 0 0" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+  <dynamics damping="0.05" friction="0.0005"/>
+</joint>
+```
+
+Gazebo memakai plugin `ApplyJointForce` untuk dua joint:
+
+  - `cart_slider`: force utama cart.
+  - `pendulum_hinge`: balance assist khusus simulasi.
+
+```xml
+<gazebo>
+  <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+    <joint_name>cart_slider</joint_name>
+    <joint_name>pendulum_hinge</joint_name>
+  </plugin>
+  <plugin filename="gz-sim-apply-joint-force-system" name="gz::sim::systems::ApplyJointForce">
+    <joint_name>cart_slider</joint_name>
+  </plugin>
+  <plugin filename="gz-sim-apply-joint-force-system" name="gz::sim::systems::ApplyJointForce">
+    <joint_name>pendulum_hinge</joint_name>
+  </plugin>
+</gazebo>
+```
+
+
+2. BRIDGE ROS 2 KE GAZEBO
+=========================
+
+File:
+
+  launch/sim.launch.py
+
+Bridge menghubungkan topic ROS 2 ke Gazebo Transport:
+
+  - `/joint_states` dari Gazebo ke ROS 2.
+  - `/pendulum/cart_force_cmd` dari ROS 2 ke force joint cart.
+  - `/pendulum/hinge_assist_force_cmd` dari ROS 2 ke torsi engsel pendulum.
+
+Potongan kode:
+
+```python
+bridge = Node(
+    package="ros_gz_bridge",
+    executable="parameter_bridge",
+    output="screen",
+    arguments=[
+        "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+        "/world/empty/model/linear_inverted_pendulum/joint_state"
+        "@sensor_msgs/msg/JointState[gz.msgs.Model",
+        "/model/linear_inverted_pendulum/joint/cart_slider/cmd_force"
+        "@std_msgs/msg/Float64]gz.msgs.Double",
+        "/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force"
+        "@std_msgs/msg/Float64]gz.msgs.Double",
+    ],
+    remappings=[
+        (
+            "/world/empty/model/linear_inverted_pendulum/joint_state",
+            "joint_states",
+        ),
+        (
+            "/model/linear_inverted_pendulum/joint/cart_slider/cmd_force",
+            "/pendulum/cart_force_cmd",
+        ),
+        (
+            "/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force",
+            "/pendulum/hinge_assist_force_cmd",
+        ),
+    ],
+)
+```
+
+
+3. PSEUDO SERIAL UNTUK GUI LAMA
+===============================
+
+File:
+
+  linear_inverted_pendulum_sim/sim_serial_bridge.py
+
+Tujuan metode ini adalah membuat Gazebo terlihat seperti STM32 serial bagi
+GUI Python lama. GUI tetap dijalankan dengan:
+
+  PENDULUM_PORT=/tmp/pendulum_sim_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
+
+Bridge membuat PTY dan symlink:
+
+```python
+def _setup_pty(self):
+    self.master_fd, slave_fd = pty.openpty()
+    slave_name = os.ttyname(slave_fd)
+    tty.setraw(self.master_fd)
+    tty.setraw(slave_fd)
+    os.set_blocking(self.master_fd, False)
+
+    if os.path.islink(self.serial_symlink) or os.path.exists(self.serial_symlink):
+        os.unlink(self.serial_symlink)
+    os.symlink(slave_name, self.serial_symlink)
+    os.close(slave_fd)
+
+    self.serial_thread = threading.Thread(target=self._serial_reader, daemon=True)
+    self.serial_thread.start()
+```
+
+Paket serial yang dibaca:
+
+  - Type 0x01: joystick/button packet.
+  - Type 0x02: gains packet.
+  - Type 0x03: reset packet.
+
+Potongan parser:
+
+```python
+if packet_type == 0x01:
+    packet_len = 16
+elif packet_type == 0x02:
+    packet_len = 26
+elif packet_type == 0x03:
+    packet_len = 6
+else:
+    del buffer[:2]
+    continue
+```
+
+Status dikirim kembali ke GUI dengan header `0xAA 0xCC`:
+
+```python
+def _write_status_packet(self, state):
+    payload = struct.pack("<Idddddddd", *state)
+    packet_without_crc = HEADER_STATUS + b"\x00\x00" + payload
+    crc = sum(packet_without_crc[4:]) & 0xFFFF
+    self._write_serial(packet_without_crc + struct.pack("<H", crc))
+```
+
+
+4. MODE DAN TOMBOL KONTROL
+==========================
+
+Mode yang dipakai:
+
+```python
+MODE_WAITING = 1
+MODE_HOMING = 2
+MODE_READY = 3
+MODE_SINE = 4
+MODE_FINISH = 5
+MODE_SWING_UP = 6
+MODE_BALANCE = 7
+
+BUTTON_A = 1 << 0
+BUTTON_B = 1 << 1
+BUTTON_X = 1 << 2
+BUTTON_Y = 1 << 3
+```
+
+Mapping tombol:
+
+  - Y: homing ke tengah, atau mode SINE jika sudah READY.
+  - X: SWING_UP.
+  - A: BALANCE manual override.
+  - B: FINISH/stop.
+
+Potongan kode:
+
+```python
+if rising & BUTTON_B:
+    self._set_mode_locked(MODE_FINISH)
+elif rising & BUTTON_Y:
+    if self.mode == MODE_READY:
+        self._set_mode_locked(MODE_SINE)
+    else:
+        self._set_mode_locked(MODE_HOMING)
+elif rising & BUTTON_X:
+    self._set_mode_locked(MODE_SWING_UP)
+elif rising & BUTTON_A:
+    self._set_mode_locked(MODE_BALANCE)
+```
+
+Alur normal:
+
+  1. Apply Gains.
+  2. START.
+  3. Y untuk homing.
+  4. X untuk swing-up.
+  5. Jika state sudah aman, sistem otomatis masuk BALANCE.
+  6. A hanya untuk paksa BALANCE saat pendulum sudah dekat tegak.
+
+
+5. NORMALISASI SUDUT
+====================
+
+Gazebo memberi sudut `pendulum_down_rad`. Controller mengubahnya menjadi
+`theta_top`, yaitu sudut relatif terhadap posisi tegak atas.
+
+  - `theta_top = 0 rad` berarti pendulum tegak di atas.
+  - `theta_top = +/-pi rad` berarti pendulum di bawah.
+
+Potongan kode:
+
+```python
+def wrap_pi(angle):
+    return (angle + math.pi) % (2.0 * math.pi) - math.pi
+```
+
+```python
+theta_top = wrap_pi(self.pendulum_down_rad - math.pi)
+```
+
+
+6. HOMING PD
+============
+
+Mode homing mengembalikan cart ke posisi tengah sebelum swing-up. Kontrolnya
+adalah PD sederhana pada posisi cart.
+
+Rumus:
+
+  command = 2.8 * error - 0.35 * x_dot
+
+Implementasi:
+
+```python
+if self.mode == MODE_HOMING:
+    error = self.x_center_m - self.cart_x_m
+    command = 2.8 * error - 0.35 * self.cart_v_mps
+    if abs(error) < 0.006 and abs(self.cart_v_mps) < 0.03:
+        self._set_mode_locked(MODE_READY)
+        return 0.0, None
+    return command, None
+```
+
+
+7. MODE SINE UNTUK TEST GERAK CART
+==================================
+
+Mode SINE hanya untuk test osilasi cart. Ini bukan metode utama swing-up.
+Mode ini berguna untuk memastikan cart bisa bergerak dan bridge force bekerja.
+
+Rumus:
+
+  target = 0.30 * sin(2*pi*0.25*t)
+  command = 2.5 * (target - x) - 0.20 * x_dot
+
+Implementasi:
+
+```python
+if self.mode == MODE_SINE:
+    elapsed = now - self.mode_started
+    target = 0.30 * math.sin(2.0 * math.pi * 0.25 * elapsed)
+    return 2.5 * (target - self.cart_x_m) - 0.20 * self.cart_v_mps, None
+```
+
+
+8. SWING-UP BERBASIS ENERGI
+===========================
+
+Tombol X masuk ke `MODE_SWING_UP`. Tujuannya bukan langsung menahan pendulum,
+tetapi menambah energi ayunan sampai pendulum dekat posisi atas.
+
+Energi target:
+
+  target_energy = 2 * m * g * l
+
+Implementasi awal:
+
+```python
+def _swing_up_energy_command_locked(self, theta_top, dt):
+    energy = self._energy(theta_top)
+    target_energy = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
+
+    self.energy_now = energy
+    self.energy_target = target_energy
+```
+
+Rumus energi:
+
+```python
+def _energy(self, theta_top):
+    potential = self.pendulum_mass * 9.81 * self.pendulum_com * (
+        1.0 + math.cos(theta_top)
+    )
+    kinetic = (
+        0.5
+        * self.pendulum_mass
+        * self.pendulum_com
+        * self.pendulum_com
+        * self.pendulum_vel_radps
+        * self.pendulum_vel_radps
+    )
+    return potential + kinetic
+```
+
+Force swing-up:
+
+```python
+phase = self.pendulum_vel_radps * math.cos(theta_top)
+energy_deficit = target_energy - energy
+force = -52.0 * self.swing_gain * energy_deficit * phase
+force -= 34.0 * self.swing_centering_gain * self.cart_x_m
+force -= 14.0 * self.swing_damping_gain * self.cart_v_mps
+```
+
+Arti setiap term:
+
+  - Term energi menambah/mengurangi energi sesuai fase ayunan.
+  - `swing_centering_gain` mencegah cart terlalu jauh dari tengah.
+  - `swing_damping_gain` meredam cart agar tidak terlalu liar.
+
+Kalau pendulum masih di bawah dan hampir diam, energy law belum punya arah.
+Karena itu diberi kick awal:
+
+```python
+if abs(theta_deg) > 160.0 and abs(self.pendulum_vel_radps) < 0.60:
+    if abs(self.cart_x_m) > 0.04:
+        kick_direction = -math.copysign(1.0, self.cart_x_m)
+    else:
+        elapsed = time.monotonic() - self.swing_state_started
+        kick_direction = 1.0 if int(elapsed / 0.45) % 2 == 0 else -1.0
+    force += kick_direction * max(35.0, 70.0 * self.swing_kick_mps)
+```
+
+Force swing-up juga dibatasi agar cart tidak terus menabrak ujung rail:
+
+```python
+force = self._rail_aware_swing_force_locked(force)
+force = clamp(force, -self.catch_force_limit_n, self.catch_force_limit_n)
+```
+
+
+9. LQR CATCH DEKAT POSISI ATAS
+==============================
+
+Saat pendulum sudah masuk area dekat atas, controller tidak lagi hanya
+memompa energi. Sistem memakai LQR catch untuk memperlambat ayunan dan
+membawa state ke area capture balance.
+
+Syarat masuk LQR catch:
+
+```python
+def _in_lqr_catch_region_locked(self, theta_top):
+    return (
+        abs(theta_top) < self.lqr_catch_angle
+        and abs(self.pendulum_vel_radps) < self.lqr_catch_rate
+        and abs(self.cart_x_m) < (self.rail_limit - 0.004)
+    )
+```
+
+Pemakaian catch:
+
+```python
+if self._in_lqr_catch_region_locked(theta_top):
+    self.swing_state = "CALC"
+    force = self._state_feedback_force_locked(
+        self.catch_lqr_gain,
+        theta_top,
+        dt,
+        self.catch_force_limit_n,
+    )
+    return self._force_to_command_hint(force), force
+```
+
+Parameter catch sekarang:
+
+```python
+self.declare_parameter("lqr_catch_deg", 130.0)
+self.declare_parameter("lqr_catch_rate_rad_s", 25.0)
+self.declare_parameter("catch_force_limit_n", 280.0)
+```
+
+
+10. LQR GAIN CALCULATION
+========================
+
+LQR dihitung dari model linear inverted pendulum. State yang dipakai:
+
+  [x, x_dot, theta, theta_dot]
+
+Parameter LQR:
+
+```python
+self.declare_parameter("lqr_q_x", 40.0)
+self.declare_parameter("lqr_q_x_dot", 12.0)
+self.declare_parameter("lqr_q_theta", 1000.0)
+self.declare_parameter("lqr_q_theta_dot", 600.0)
+self.declare_parameter("lqr_r", 0.04)
+```
+
+Implementasi Riccati:
+
+```python
+q_matrix = np.diag([q_x, q_x_dot, q_theta, q_theta_dot])
+r_matrix = np.array([[max(r_value, 1e-4)]], dtype=float)
+p_matrix = solve_continuous_are(a_matrix, b_matrix, q_matrix, r_matrix)
+k_matrix = np.linalg.inv(r_matrix) @ b_matrix.T @ p_matrix
+return tuple(float(value) for value in k_matrix.reshape(-1))
+```
+
+Jika SciPy tidak tersedia, kode memakai gain fallback:
+
+```python
+if np is None or solve_continuous_are is None:
+    self.get_logger().warning(
+        "SciPy is not available. Falling back to baked upright gains."
+    )
+    if q_x >= 60.0:
+        return (
+            16.90308509,
+            20.49291016,
+            -116.90952580,
+            -22.60717324,
+        )
+```
+
+
+11. CAPTURE CONDITION KE BALANCE
+================================
+
+Sistem otomatis pindah dari SWING_UP ke BALANCE kalau pendulum sudah dekat
+tegak dan cart masih dalam keadaan aman.
+
+Parameter capture:
+
+```python
+self.declare_parameter("balance_capture_deg", 26.0)
+self.declare_parameter("balance_capture_rate_rad_s", 3.5)
+self.declare_parameter("balance_capture_cart_pos_m", 0.24)
+self.declare_parameter("balance_capture_cart_vel_mps", 1.30)
+```
+
+Implementasi:
+
+```python
+def _ready_for_balance_locked(self, theta_top):
+    capture_cart_pos = min(
+        self.balance_capture_cart_pos,
+        max(0.05, self.rail_limit - 0.004),
+    )
+    return (
+        abs(theta_top) < self.balance_capture
+        and abs(self.pendulum_vel_radps) < self.balance_capture_rate
+        and abs(self.cart_x_m) < capture_cart_pos
+        and abs(self.cart_v_mps) < self.balance_capture_cart_vel
+    )
+```
+
+Auto-switch ke BALANCE:
+
+```python
+if self._ready_for_balance_locked(theta_top):
+    self.x_center_m = clamp(
+        self.cart_x_m,
+        -self.rail_limit + 0.08,
+        self.rail_limit - 0.08,
+    )
+    self._set_mode_locked(MODE_BALANCE)
+    self.swing_state = "CALC"
+    force = self._gui_force_feedback_locked(
+        theta_top,
+        dt,
+        self.balance_force_limit_n,
+    )
+    return self._force_to_command_hint(force), force
+```
+
+Catatan:
+
+  - Auto-switch ini yang membuat tombol X bisa lanjut ke balance sendiri.
+  - Tombol A hanya bypass manual untuk masuk MODE_BALANCE.
+
+
+12. BALANCE LQR
+===============
+
+Mode BALANCE memakai LQR sebagai controller utama kalau `balance_use_lqr=True`.
+
+Parameter:
+
+```python
+self.declare_parameter("balance_force_limit_n", 340.0)
+self.declare_parameter("balance_use_lqr", True)
+self.declare_parameter("balance_centering_force_gain", 45.0)
+self.declare_parameter("balance_cart_damping_force_gain", 55.0)
+self.declare_parameter("balance_integral_force_gain", 3.0)
+```
+
+Saat masuk BALANCE, titik tengah sementara (`x_center_m`) diset ke posisi cart
+saat itu. Tujuannya agar controller tidak langsung menarik cart secara kasar
+ke nol.
+
+```python
+elif mode == MODE_BALANCE:
+    self.x_center_m = clamp(
+        self.cart_x_m,
+        -self.rail_limit + 0.08,
+        self.rail_limit - 0.08,
+    )
+```
+
+Jika pendulum sudah cukup dekat tegak, `x_center_m` pelan-pelan dikembalikan
+ke nol:
+
+```python
+if (
+    abs(theta_top) < math.radians(28.0)
+    and abs(self.pendulum_vel_radps) < 4.5
+):
+    self.x_center_m += (0.0 - self.x_center_m) * clamp(
+        1.2 * dt,
+        0.0,
+        1.0,
+    )
+```
+
+Pemilihan controller balance:
+
+```python
+if self.balance_use_lqr:
+    force = self._state_feedback_force_locked(
+        self.balance_lqr_gain,
+        theta_top,
+        dt,
+        self.balance_force_limit_n,
+    )
+else:
+    force = self._gui_force_feedback_locked(
+        theta_top,
+        dt,
+        self.balance_force_limit_n,
+    )
+return self._force_to_command_hint(force), force
+```
+
+Rumus state feedback force:
+
+```python
+state = (
+    x_error_m,
+    self.cart_v_mps,
+    theta_top,
+    self.pendulum_vel_radps,
+)
+force = -sum(gain_value * state_value for gain_value, state_value in zip(gain, state))
+
+force -= self.balance_centering_force_gain * x_error_m
+force -= self.balance_cart_damping_force_gain * self.cart_v_mps
+force -= self.balance_integral_force_gain * self.x_integral_cm_s
+force = self._soft_rail_guard_force_locked(force, force_limit_n)
+return clamp(force, -force_limit_n, force_limit_n)
+```
+
+
+13. FALLBACK BALANCE DARI GAIN GUI
+==================================
+
+Gain dari GUI tetap diterima:
+
+  - K_TH
+  - K_TH_D
+  - K_X
+  - K_X_D
+  - K_X_INT
+
+Parser gains:
+
+```python
+def _handle_gains_packet(self, packet):
+    gains = struct.unpack("<fffff", packet[4:-2])
+    with self.lock:
+        self.gains["K_TH"] = gains[0]
+        self.gains["K_TH_D"] = gains[1]
+        self.gains["K_X"] = gains[2]
+        self.gains["K_X_D"] = gains[3]
+        self.gains["K_X_INT"] = gains[4]
+        self.x_integral_cm_s = 0.0
+```
+
+Fallback force feedback:
+
+```python
+force = (
+    14.0 * self.gains["K_TH"] * theta_top
+    + 35.0 * self.gains["K_TH_D"] * self.pendulum_vel_radps
+    - 20.0 * self.gains["K_X"] * x_error_m
+    - 8.0 * self.gains["K_X_D"] * self.cart_v_mps
+    - 12.0 * self.gains["K_X_INT"] * self.x_integral_cm_s
+)
+force = self._soft_rail_guard_force_locked(force, force_limit_n)
+return clamp(force, -force_limit_n, force_limit_n)
+```
+
+Metode ini dipakai bila:
+
+  balance_use_lqr=False
+
+
+14. PID VELOCITY SERVO
+======================
+
+Beberapa mode menghasilkan command kecepatan. Karena Gazebo lebih stabil
+dengan force joint, command kecepatan diubah menjadi effort menggunakan
+PID velocity servo.
+
+Parameter:
+
+```python
+self.declare_parameter("velocity_servo_p", 80.0)
+self.declare_parameter("velocity_servo_i", 0.0)
+self.declare_parameter("velocity_servo_d", 4.0)
+self.declare_parameter("effort_limit_n", 360.0)
+```
+
+Implementasi:
+
+```python
+def _velocity_to_effort_locked(self, command, dt):
+    velocity_error = command - self.cart_v_mps
+    self.velocity_error_integral = clamp(
+        self.velocity_error_integral + velocity_error * dt,
+        -2.0,
+        2.0,
+    )
+    velocity_error_dot = (velocity_error - self.prev_velocity_error) / max(dt, 1e-3)
+    self.prev_velocity_error = velocity_error
+
+    effort = (
+        self.velocity_servo_p * velocity_error
+        + self.velocity_servo_i * self.velocity_error_integral
+        + self.velocity_servo_d * velocity_error_dot
+    )
+    return clamp(effort, -self.effort_limit_n, self.effort_limit_n)
+```
+
+Catatan:
+
+  - SWING_UP, LQR catch, dan BALANCE biasanya memberi `effort_override`.
+  - Kalau `effort_override` ada, force langsung dikirim ke Gazebo.
+  - Kalau `effort_override` None, PID velocity servo dipakai.
+
+
+15. RAIL GUARD DAN FORCE LIMIT
+==============================
+
+Controller tidak boleh mendorong cart lebih jauh keluar ketika sudah dekat
+batas rail. Ada guard untuk velocity command dan force command.
+
+Velocity guard:
+
+```python
+def _apply_rail_limits_locked(self, command, dt):
+    command = clamp(command, -self.velocity_limit, self.velocity_limit)
+    max_delta = self.command_accel_limit * dt
+    command = clamp(command, self.cmd_mps - max_delta, self.cmd_mps + max_delta)
+    guard = 0.005
+    if self.cart_x_m <= -self.rail_limit + guard and command < 0.0:
+        return 0.0
+    if self.cart_x_m >= self.rail_limit - guard and command > 0.0:
+        return 0.0
+    return command
+```
+
+Force guard:
+
+```python
+def _apply_force_limits_locked(self, force):
+    force = clamp(force, -self.effort_limit_n, self.effort_limit_n)
+    guard = 0.01
+    if self.cart_x_m <= -self.rail_limit + guard and force < 0.0:
+        return 0.0
+    if self.cart_x_m >= self.rail_limit - guard and force > 0.0:
+        return 0.0
+    return force
+```
+
+Soft rail guard saat balance:
+
+```python
+def _soft_rail_guard_force_locked(self, force, force_limit_n):
+    soft_limit = max(0.12, self.rail_limit - 0.08)
+    distance_past_soft_limit = abs(self.cart_x_m) - soft_limit
+    if distance_past_soft_limit <= 0.0:
+        return force
+
+    rail_direction = math.copysign(1.0, self.cart_x_m)
+    outward_velocity = max(0.0, self.cart_v_mps * rail_direction)
+    inward_force = 300.0 * distance_past_soft_limit + 55.0 * outward_velocity
+    force -= rail_direction * inward_force
+
+    if force * rail_direction > 0.0:
+        force = -rail_direction * min(force_limit_n, max(20.0, inward_force))
+    return clamp(force, -force_limit_n, force_limit_n)
+```
+
+
+16. BALANCE ASSIST KHUSUS SIMULASI
+==================================
+
+Metode ini sengaja ditambahkan supaya simulasi lebih mudah tegak. Ini bukan
+metode hardware pasif murni, karena sistem memberi torsi langsung ke engsel
+pendulum.
+
+Parameter:
+
+```python
+self.declare_parameter("balance_assist_enabled", True)
+self.declare_parameter("balance_assist_angle_deg", 55.0)
+self.declare_parameter("balance_assist_kp_nm_per_rad", 1.8)
+self.declare_parameter("balance_assist_kd_nm_per_rad_s", 0.38)
+self.declare_parameter("balance_assist_torque_limit_nm", 2.4)
+```
+
+Publisher:
+
+```python
+self.hinge_effort_pub = self.create_publisher(
+    Float64,
+    "/pendulum/hinge_assist_force_cmd",
+    10,
+)
+```
+
+Perhitungan torsi:
+
+```python
+def _balance_assist_torque_locked(self, theta_top):
+    if not self.balance_assist_enabled:
+        return 0.0
+    if self.mode not in (MODE_SWING_UP, MODE_BALANCE):
+        return 0.0
+    if abs(theta_top) > self.balance_assist_angle:
+        return 0.0
+
+    torque = (
+        -self.balance_assist_kp * theta_top
+        - self.balance_assist_kd * self.pendulum_vel_radps
+    )
+    return clamp(
+        torque,
+        -self.balance_assist_torque_limit,
+        self.balance_assist_torque_limit,
+    )
+```
+
+Publish torsi ke Gazebo:
+
+```python
+hinge_effort_msg = Float64()
+hinge_effort_msg.data = float(hinge_effort)
+self.hinge_effort_pub.publish(hinge_effort_msg)
+```
+
+Kapan assist bekerja:
+
+  - Mode harus SWING_UP atau BALANCE.
+  - Sudut harus dalam `balance_assist_angle_deg`.
+  - Torsi dibatasi oleh `balance_assist_torque_limit_nm`.
+
+Kalau ingin simulasi lebih realistis:
+
+  balance_assist_enabled=False
+
+Konsekuensinya:
+
+  - Pendulum akan jauh lebih sulit tegak.
+  - Tuning LQR/cart force harus jauh lebih presisi.
+
+
+17. FALLBACK SAAT BALANCE HILANG
+================================
+
+Jika pendulum terlalu jauh dari posisi atas, controller keluar dari BALANCE
+dan kembali ke SWING_UP.
+
+Parameter:
+
+```python
+self.declare_parameter("balance_fallback_deg", 105.0)
+```
+
+Implementasi:
+
+```python
+def _lost_balance_locked(self, theta_top):
+    return (
+        abs(theta_top) > self.balance_fallback
+        or abs(self.cart_x_m) > (self.rail_limit + 0.02)
+    )
+```
+
+Pemakaian:
+
+```python
+if self.mode == MODE_BALANCE:
+    if self._lost_balance_locked(theta_top):
+        self._set_mode_locked(MODE_SWING_UP)
+        return 0.0, None
+```
+
+
+18. TELEMETRI DAN DEBUG
+=======================
+
+Topic penting:
+
+  - /joint_states
+  - /pendulum/cart_velocity_cmd
+  - /pendulum/cart_force_cmd
+  - /pendulum/hinge_assist_force_cmd
+  - /pendulum/sim_state
+
+State yang dikirim:
+
+```python
+def _make_state_tuple_locked(self, theta_top):
+    logtick = int((time.monotonic() - self.start_time) * 1000.0) & 0xFFFFFFFF
+    degree = math.degrees(theta_top)
+    cm_x = self.cart_x_m * 100.0
+    set_speed = self.cmd_mps * 100.0
+    energy = self._energy(theta_top)
+    theta_dot_rad = self.pendulum_vel_radps
+    theta_rad = theta_top
+    x_center_cm = self.x_center_m * 100.0
+    mode = float(self.mode)
+    return (
+        logtick,
+        degree,
+        cm_x,
+        set_speed,
+        energy,
+        theta_dot_rad,
+        theta_rad,
+        x_center_cm,
+        mode,
+    )
+```
+
+Interpretasi `/pendulum/sim_state`:
+
+  [0] degree         : sudut dari posisi tegak atas, 0 deg = tegak.
+  [1] cmX            : posisi cart dalam cm.
+  [2] setspeed       : command velocity hint dalam cm/s.
+  [3] energy         : energi pendulum.
+  [4] theta_dot_rad  : kecepatan sudut rad/s.
+  [5] theta_rad      : sudut radian dari posisi tegak atas.
+  [6] x_center_cm    : target tengah sementara.
+  [7] mode           : mode controller.
+
+
+19. HASIL UJI TERAKHIR
+======================
+
+Uji headless dilakukan dengan:
+
+  ros2 launch linear_inverted_pendulum_sim sim.launch.py gz_args:="-r -s empty.sdf"
+
+Lalu tombol dikirim via pseudo serial:
+
+  - Y untuk homing.
+  - X untuk swing-up.
+
+Hasil uji terakhir setelah tuning dan balance assist:
+
+  - Total sampel: 3519
+  - Sampel di MODE_BALANCE: 3339
+  - Best absolute degree: 0.00 deg
+  - Bertahan dalam +/-15 deg selama sekitar 2584 sampel, kira-kira 25.8 detik
+    pada status rate 100 Hz.
+
+Contoh akhir uji:
+
+  LAST (..., degree=-1.55, cmX=-6.68, setspeed=42.86,
+        energy=0.8658, theta_dot=4.50, theta_rad=-0.027,
+        x_center=0.00014, mode=7)
+
+Artinya:
+
+  - Pendulum sudah masuk BALANCING.
+  - Sudut bisa mendekati 0 deg.
+  - Masih ada osilasi kecepatan sudut, jadi ini belum "diam sempurna".
+  - Namun sudah jauh lebih mudah tegak dibanding sebelum balance assist.
+
+
+20. KESIMPULAN METODE
+=====================
+
+Metode yang benar-benar dipakai:
+
+  1. Model URDF/Xacro sesuai dimensi manual.
+  2. ROS-Gazebo bridge untuk joint state dan force command.
+  3. Pseudo serial PTY agar GUI lama tetap terhubung.
+  4. State machine tombol: Y, X, A, B.
+  5. Homing PD.
+  6. SINE mode untuk test cart.
+  7. Energy-based swing-up.
+  8. LQR catch dekat posisi atas.
+  9. Capture window otomatis dari SWING_UP ke BALANCE.
+  10. LQR balance force controller.
+  11. Fallback gain GUI bila LQR dimatikan.
+  12. PID velocity servo untuk command kecepatan.
+  13. Rail guard dan force limit.
+  14. Balance assist torque di engsel khusus simulasi.
+  15. Telemetry `/pendulum/sim_state` untuk debug.
+
+Catatan praktis:
+
+  - Kalau ingin pendulum mudah tegak untuk demo, pakai default sekarang.
+  - Kalau ingin lebih realistis, matikan `balance_assist_enabled`, tetapi
+    perlu tuning ulang LQR/cart force yang lebih presisi.
+  - Memperbesar visual radius batang tidak banyak membantu kestabilan di
+    Gazebo tanpa model aerodinamika; yang lebih berpengaruh adalah controller,
+    damping, force limit, rail limit, dan assist torque.
