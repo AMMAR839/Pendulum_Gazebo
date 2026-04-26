@@ -1,0 +1,17 @@
+running develop
+running egg_info
+writing linear_inverted_pendulum_real_sim.egg-info/PKG-INFO
+writing dependency_links to linear_inverted_pendulum_real_sim.egg-info/dependency_links.txt
+writing entry points to linear_inverted_pendulum_real_sim.egg-info/entry_points.txt
+writing requirements to linear_inverted_pendulum_real_sim.egg-info/requires.txt
+writing top-level names to linear_inverted_pendulum_real_sim.egg-info/top_level.txt
+reading manifest file 'linear_inverted_pendulum_real_sim.egg-info/SOURCES.txt'
+writing manifest file 'linear_inverted_pendulum_real_sim.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/python3.12/site-packages/linear-inverted-pendulum-real-sim.egg-link (link to .)
+Installing real_serial_bridge script to /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/linear_inverted_pendulum_real_sim
+
+Installed /home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim
+running symlink_data
+symbolically linking /home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/resource/linear_inverted_pendulum_real_sim -> /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/share/ament_index/resource_index/packages
+error: [Errno 17] File exists: '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/resource/linear_inverted_pendulum_real_sim' -> '/home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/share/ament_index/resource_index/packages/linear_inverted_pendulum_real_sim'
