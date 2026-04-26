@@ -125,7 +125,7 @@
     <child link="cart_link"/>
     <origin xyz="0 0 ${pivot_z}" rpy="0 0 0"/>
     <axis xyz="1 0 0"/>
-    <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="100.0" velocity="3.0"/>
+    <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="220.0" velocity="3.0"/>
     <dynamics damping="0.02" friction="0.0005"/>
   </joint>
 
@@ -178,7 +178,7 @@
     <child link="pendulum_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <dynamics damping="0.006" friction="0.00001"/>
+    <dynamics damping="0.05" friction="0.0005"/>
   </joint>
 
   <link name="pendulum_link">

@@ -122,7 +122,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "status_rate_hz",
-                default_value="50.0",
+                default_value="100.0",
                 description="Status packet rate sent to the pseudo serial port.",
             ),
             DeclareLaunchArgument(
