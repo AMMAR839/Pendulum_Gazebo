@@ -118,12 +118,13 @@ return (
 )
 ```
 
-Default workspace ini mengikuti manual:
+Default workspace ini dibuat lebih ketat agar balance baru aktif saat pendulum
+sudah lebih pelan di dekat posisi tegak:
 
 ```python
 self.declare_parameter("balance_capture_deg", 12.0)
-self.declare_parameter("balance_capture_rate_rad_s", 4.0)
-self.declare_parameter("balance_capture_cart_pos_m", 0.30)
+self.declare_parameter("balance_capture_rate_rad_s", 1.5)
+self.declare_parameter("balance_capture_cart_pos_m", 0.34)
 self.declare_parameter("balance_capture_cart_vel_mps", 3.0)
 ```
 
@@ -141,6 +142,30 @@ command = (
     - self.gains["K_X_D"] * self.cart_v_mps
     - self.gains["K_X_INT"] * self.x_integral_cm_s
 )
+```
+
+Default gain yang direkomendasikan untuk GUI pada workspace ini:
+
+```text
+K_TH    = 10.0
+K_TH_D  = 3.0
+K_X     = 2.4
+K_X_D   = 3.4
+K_X_INT = 0.08
+```
+
+Nilai ini memberi damping sudut dan damping cart lebih kuat dibanding default
+awal, sementara centering dan integral posisi cart dibuat lebih kecil agar cart
+tidak terlalu agresif mengejar titik tengah saat proses catch/balance.
+
+Untuk demo simulasi yang lebih stabil, assist engsel hanya aktif dekat posisi
+tegak:
+
+```text
+balance_assist_angle_deg        = 35.0
+balance_assist_kp_nm_per_rad    = 4.5
+balance_assist_kd_nm_per_rad_s  = 3.2
+balance_assist_torque_limit_nm  = 6.0
 ```
 
 ### Model motor manual

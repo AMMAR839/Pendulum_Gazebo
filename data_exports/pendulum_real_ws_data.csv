@@ -1,0 +1,68 @@
+workspace,category,name,source,unit_or_type,value,description,interpretation
+pendulum_real_ws,identity,workspace_path,repo,path,pendulum_real_ws,Workspace simulasi yang lebih dekat Manual Book LIP01,Dipakai untuk membandingkan dengan karakter alat asli
+pendulum_real_ws,identity,package,ROS 2 package,name,linear_inverted_pendulum_real_sim,Package manual-book-style untuk Gazebo Harmonic dan ROS 2 Jazzy,Launch dengan real_sim.launch.py
+pendulum_real_ws,identity,serial_symlink,real_serial_bridge.py,path,/tmp/pendulum_real_serial,Pseudo serial terpisah untuk GUI Python lama,Butuh PENDULUM_SIM=1 karena portnya bukan /tmp/pendulum_sim_serial
+pendulum_real_ws,identity,gui_command,README,command,PENDULUM_PORT=/tmp/pendulum_real_serial PENDULUM_SIM=1 PENDULUM_NO_JOYSTICK=1 python3 main.py,Command GUI untuk workspace manual-book-style,Mencegah GUI memakai gain hardware asli yang tidak cocok untuk sim
+pendulum_real_ws,model,base_length,URDF,m,1.00,Panjang base sesuai Manual Book LIP01,Data fisik visual dan collision
+pendulum_real_ws,model,base_width,URDF,m,0.35,Lebar base sesuai Manual Book LIP01,Data fisik visual dan collision
+pendulum_real_ws,model,travel,URDF,m,0.78,Travel kontrol rail,Kiri-kanan sekitar +/-0.39 m dari tengah
+pendulum_real_ws,model,rail_limit,real_serial_bridge.py,m,0.39,Batas posisi cart dalam controller,Digunakan untuk rail guard
+pendulum_real_ws,model,cart_mass,real_serial_bridge.py,kg,1.20,Massa cart pada model kontrol,Mempengaruhi gaya balance
+pendulum_real_ws,model,pendulum_length,URDF,m,0.40,Panjang batang pendulum sesuai Manual Book,Batang D8 x 400 mm
+pendulum_real_ws,model,pendulum_mass,real_serial_bridge.py,kg,0.20,Massa pendulum sesuai Manual Book,Dipakai pada energi swing-up
+pendulum_real_ws,model,pendulum_com,real_serial_bridge.py,m,0.20,Jarak pusat massa dari engsel,Target energi memakai nilai ini
+pendulum_real_ws,topic,/joint_states,Gazebo to ROS,sensor_msgs/JointState,cart_slider; pendulum_hinge,Posisi dan kecepatan joint dari Gazebo,Sumber state mentah controller
+pendulum_real_ws,topic,/pendulum/cart_velocity_cmd,ROS topic,m/s,Float64,Command kecepatan cart dari controller internal,Belum termasuk respons lambat motor
+pendulum_real_ws,topic,/pendulum/cart_force_cmd,ROS topic,N,Float64,Gaya motor cart yang dikirim ke Gazebo,Data penting untuk melihat limit gaya realistis
+pendulum_real_ws,topic,/pendulum/hinge_assist_force_cmd,ROS topic,Nm,Float64,Assist kecil khusus simulasi saat catch atau balance,Bisa dimatikan dengan balance_assist_enabled=false
+pendulum_real_ws,topic,/pendulum/sim_state,ROS topic,Float64MultiArray,"degree; cmX; setspeed; energy; theta_dot_rad; theta_rad; x_center_cm; mode",Data ringkas untuk analisis runtime,Topic utama untuk membaca keberhasilan swing-up dan balance
+pendulum_real_ws,sim_state,degree,/pendulum/sim_state,deg,runtime,Sudut terhadap posisi atas,0 deg berarti pendulum tegak di atas dan +/-180 deg berarti di bawah
+pendulum_real_ws,sim_state,cmX,/pendulum/sim_state,cm,runtime,Posisi cart dari tengah rail,Nilai besar berarti cart mendekati ujung rail
+pendulum_real_ws,sim_state,setspeed,/pendulum/sim_state,cm/s,runtime,Command kecepatan cart yang sedang diminta controller,Di workspace ini respons aktual masih diperlambat model motor
+pendulum_real_ws,sim_state,energy,/pendulum/sim_state,J,runtime,Energi pendulum yang dihitung controller,Naik saat swing-up membangun energi
+pendulum_real_ws,sim_state,theta_dot_rad,/pendulum/sim_state,rad/s,runtime,Kecepatan sudut pendulum,Harus kecil karena capture lebih ketat
+pendulum_real_ws,sim_state,theta_rad,/pendulum/sim_state,rad,runtime,Sudut terhadap posisi atas dalam radian,0 rad berarti tegak di atas
+pendulum_real_ws,sim_state,x_center_cm,/pendulum/sim_state,cm,runtime,Target tengah balance cart,Controller balance menahan cart dekat nilai ini
+pendulum_real_ws,sim_state,mode,/pendulum/sim_state,enum,runtime,Mode controller saat ini,6 berarti SWING_UP dan 7 berarti BALANCE
+pendulum_real_ws,serial_status,logtick,serial packet,ms,runtime,Waktu internal bridge yang dikirim ke GUI lewat status serial,Tidak masuk list /pendulum/sim_state karena topic membuang field pertama
+pendulum_real_ws,mode,WAITING,controller enum,id,1,Menunggu start/packet GUI,Belum menggerakkan cart
+pendulum_real_ws,mode,HOMING,controller enum,id,2,Cart diarahkan ke tengah rail,Diaktifkan dengan tombol Y
+pendulum_real_ws,mode,READY,controller enum,id,3,Cart sudah homing dan siap,Mode sebelum swing-up
+pendulum_real_ws,mode,SINE,controller enum,id,4,Mode test osilasi cart,Bukan metode utama swing-up
+pendulum_real_ws,mode,FINISH,controller enum,id,5,Stop/finish dari GUI,Cart command nol
+pendulum_real_ws,mode,SWING_UP,controller enum,id,6,Membangun energi pendulum,Diaktifkan dengan tombol X
+pendulum_real_ws,mode,BALANCE,controller enum,id,7,Menahan pendulum dekat tegak,Masuk otomatis saat capture aman atau dipaksa tombol A
+pendulum_real_ws,method,homing_pd,real_serial_bridge.py,formula,2.8*error - 0.35*cart_v,PD posisi cart ke tengah,Metode sederhana sebelum swing-up
+pendulum_real_ws,method,swing_up_energy,real_serial_bridge.py,formula,Etarget=2*m*g*com,Kontrol energi untuk menaikkan pendulum dari bawah,Swing lebih agresif tetapi centering lebih ringan daripada demo ws
+pendulum_real_ws,method,catch_region_feedback,real_serial_bridge.py,enabled,true,Full-state force ringan di area catch,Mengurangi ayunan sebelum balance tanpa memakai LQR default
+pendulum_real_ws,method,balance_control,real_serial_bridge.py,type,full-state upright force feedback,Feedback memakai theta; theta_dot; x; x_dot; integral x,Ini jalur manual-book-style karena balance_use_lqr false
+pendulum_real_ws,method,motor_model,real_serial_bridge.py,type,PWM deadband plus first-order response,Command controller tidak langsung menjadi gaya besar,Meniru deadband dan delay motor PG45 dari Manual Book
+pendulum_real_ws,method,balance_assist,real_serial_bridge.py,type,hinge torque assist,Torsi kecil langsung di engsel untuk demo stabil,Matikan jika ingin eksperimen cart-only murni
+pendulum_real_ws,parameter,status_rate_hz,real_serial_bridge.py,Hz,100.0,Rate publish status dan sim_state,Semakin tinggi semakin rapat data runtime
+pendulum_real_ws,parameter,cart_velocity_limit_mps,real_serial_bridge.py,m/s,2.20,Batas command kecepatan cart,Membatasi setspeed sebelum masuk model motor
+pendulum_real_ws,parameter,command_accel_limit_mps2,real_serial_bridge.py,m/s^2,14.0,Batas perubahan command cart,Mengurangi lonjakan command
+pendulum_real_ws,parameter,swing_gain,real_serial_bridge.py,gain,2.70,Besar pumping energi swing-up,Lebih agresif daripada demo ws
+pendulum_real_ws,parameter,swing_centering_gain,real_serial_bridge.py,gain,0.42,Penarik cart ke tengah saat swing-up,Lebih kecil agar swing-up tidak terlalu ditahan
+pendulum_real_ws,parameter,swing_damping_gain,real_serial_bridge.py,gain,0.12,Damping cart saat swing-up,Lebih kecil daripada demo ws
+pendulum_real_ws,parameter,swing_kick_mps,real_serial_bridge.py,m/s,0.82,Kick awal saat pendulum diam di bawah,Lebih besar agar swing-up mulai walau motor lebih lambat
+pendulum_real_ws,parameter,balance_capture_deg,real_serial_bridge.py,deg,12.0,Jendela sudut untuk masuk balance,Lebih ketat dan dekat Manual Book sekitar +/-10 deg
+pendulum_real_ws,parameter,balance_capture_rate_rad_s,real_serial_bridge.py,rad/s,1.5,Batas theta_dot untuk capture,Lebih ketat supaya balance aktif saat pendulum lebih pelan
+pendulum_real_ws,parameter,balance_capture_cart_pos_m,real_serial_bridge.py,m,0.34,Batas posisi cart saat capture,Cart boleh lebih jauh daripada demo ws
+pendulum_real_ws,parameter,balance_capture_cart_vel_mps,real_serial_bridge.py,m/s,3.0,Batas kecepatan cart saat capture,Nilai command boleh besar tetapi motor tetap punya delay
+pendulum_real_ws,parameter,balance_fallback_deg,real_serial_bridge.py,deg,80.0,Batas kehilangan balance,Sudut lebih jauh membuat mode balik ke swing-up
+pendulum_real_ws,parameter,catch_region_deg,real_serial_bridge.py,deg,65.0,Area masuk catch feedback,Area lebih dekat atas daripada LQR catch demo ws
+pendulum_real_ws,parameter,catch_region_rate_rad_s,real_serial_bridge.py,rad/s,10.0,Batas theta_dot untuk catch,Menahan ayunan sebelum capture
+pendulum_real_ws,parameter,catch_force_limit_n,real_serial_bridge.py,N,145.0,Batas gaya saat catch,Nilai lebih realistis daripada demo ws
+pendulum_real_ws,parameter,balance_force_limit_n,real_serial_bridge.py,N,150.0,Batas gaya saat balance,Nilai lebih realistis daripada demo ws
+pendulum_real_ws,parameter,balance_use_lqr,real_serial_bridge.py,bool,false,LQR tidak menjadi jalur balance default,Controller utama memakai upright force feedback
+pendulum_real_ws,parameter,balance_assist_enabled,real_serial_bridge.py,bool,true,Assist engsel aktif secara default,Set false untuk eksperimen cart-only
+pendulum_real_ws,parameter,balance_assist_angle_deg,real_serial_bridge.py,deg,35.0,Area sudut assist aktif,Lebih sempit daripada demo ws
+pendulum_real_ws,parameter,balance_assist_kp_nm_per_rad,real_serial_bridge.py,Nm/rad,4.5,Gain proporsional assist engsel,Lebih kuat daripada demo ws
+pendulum_real_ws,parameter,balance_assist_kd_nm_per_rad_s,real_serial_bridge.py,Nm/(rad/s),3.2,Gain damping assist engsel,Jauh lebih kuat untuk demo stabil
+pendulum_real_ws,parameter,balance_assist_torque_limit_nm,real_serial_bridge.py,Nm,6.0,Batas torsi assist engsel,Lebih besar daripada demo ws
+pendulum_real_ws,parameter,motor_pwm_deadband,real_serial_bridge.py,PWM,3212.0,Deadband PWM motor dari Manual Book,Command kecil tidak langsung menghasilkan gerak efektif
+pendulum_real_ws,parameter,motor_pwm_per_cmps,real_serial_bridge.py,PWM/(cm/s),189.1,Slope mapping PWM terhadap kecepatan motor,Dipakai mengubah command cm/s ke PWM ekuivalen
+pendulum_real_ws,parameter,motor_time_constant_s,real_serial_bridge.py,s,0.40,Konstanta waktu motor,Respons motor dibuat lambat seperti orde satu
+pendulum_real_ws,parameter,motor_velocity_servo_p,real_serial_bridge.py,gain,90.0,Servo kecepatan motor ke gaya,Mengubah velocity error menjadi force
+pendulum_real_ws,parameter,motor_velocity_servo_d,real_serial_bridge.py,gain,4.0,Damping servo motor,Mengurangi overshoot velocity servo
+pendulum_real_ws,parameter,effort_limit_n,real_serial_bridge.py,N,165.0,Batas gaya akhir ke cart,Lebih kecil dan lebih realistis daripada demo ws

@@ -69,25 +69,25 @@ class SimSerialBridge(Node):
         self.declare_parameter("swing_damping_gain", 0.12)
         self.declare_parameter("swing_kick_mps", 0.82)
         self.declare_parameter("balance_capture_deg", 12.0)
-        self.declare_parameter("balance_capture_rate_rad_s", 4.0)
+        self.declare_parameter("balance_capture_rate_rad_s", 1.5)
         self.declare_parameter("balance_fallback_deg", 80.0)
-        self.declare_parameter("balance_capture_cart_pos_m", 0.30)
+        self.declare_parameter("balance_capture_cart_pos_m", 0.34)
         self.declare_parameter("balance_capture_cart_vel_mps", 3.0)
-        self.declare_parameter("catch_region_deg", 75.0)
-        self.declare_parameter("catch_region_rate_rad_s", 16.0)
-        self.declare_parameter("catch_force_limit_n", 165.0)
-        self.declare_parameter("balance_force_limit_n", 135.0)
+        self.declare_parameter("catch_region_deg", 65.0)
+        self.declare_parameter("catch_region_rate_rad_s", 10.0)
+        self.declare_parameter("catch_force_limit_n", 145.0)
+        self.declare_parameter("balance_force_limit_n", 150.0)
         self.declare_parameter("balance_use_lqr", False)
         self.declare_parameter("balance_assist_enabled", True)
-        self.declare_parameter("balance_assist_angle_deg", 75.0)
-        self.declare_parameter("balance_assist_kp_nm_per_rad", 3.2)
-        self.declare_parameter("balance_assist_kd_nm_per_rad_s", 1.05)
-        self.declare_parameter("balance_assist_torque_limit_nm", 4.0)
-        self.declare_parameter("balance_integral_force_gain", 3.0)
-        self.declare_parameter("balance_centering_force_gain", 20.0)
-        self.declare_parameter("balance_cart_damping_force_gain", 12.0)
-        self.declare_parameter("balance_theta_kp", 120.0)
-        self.declare_parameter("balance_theta_kd", 45.0)
+        self.declare_parameter("balance_assist_angle_deg", 35.0)
+        self.declare_parameter("balance_assist_kp_nm_per_rad", 4.5)
+        self.declare_parameter("balance_assist_kd_nm_per_rad_s", 3.2)
+        self.declare_parameter("balance_assist_torque_limit_nm", 6.0)
+        self.declare_parameter("balance_integral_force_gain", 1.2)
+        self.declare_parameter("balance_centering_force_gain", 55.0)
+        self.declare_parameter("balance_cart_damping_force_gain", 45.0)
+        self.declare_parameter("balance_theta_kp", 150.0)
+        self.declare_parameter("balance_theta_kd", 72.0)
         self.declare_parameter("balance_centering_accel_gain", 3.5)
         self.declare_parameter("balance_cart_damping_accel_gain", 1.6)
         self.declare_parameter("force_to_velocity_gain", 0.014)
@@ -244,11 +244,11 @@ class SimSerialBridge(Node):
         self.last_control_time = time.monotonic()
 
         self.gains = {
-            "K_TH": 8.8,
-            "K_TH_D": 1.8,
-            "K_X": 4.0,
-            "K_X_D": 2.0,
-            "K_X_INT": 0.4,
+            "K_TH": 10.0,
+            "K_TH_D": 3.0,
+            "K_X": 2.4,
+            "K_X_D": 3.4,
+            "K_X_INT": 0.08,
         }
         self.balance_lqr_gain = None
         if self.balance_use_lqr:
@@ -596,11 +596,12 @@ class SimSerialBridge(Node):
                 return 0.0, None
 
             if (
-                abs(theta_top) < math.radians(15.0)
-                and abs(self.pendulum_vel_radps) < 3.0
+                abs(theta_top) < math.radians(8.0)
+                and abs(self.pendulum_vel_radps) < 1.4
+                and abs(self.cart_v_mps) < 0.6
             ):
                 self.x_center_m += (0.0 - self.x_center_m) * clamp(
-                    1.2 * dt,
+                    0.35 * dt,
                     0.0,
                     1.0,
                 )
@@ -723,8 +724,8 @@ class SimSerialBridge(Node):
         x_error_m = self.cart_x_m - self.x_center_m
         self.x_integral_cm_s = clamp(
             self.x_integral_cm_s + x_error_m * dt,
-            -0.20,
-            0.20,
+            -0.08,
+            0.08,
         )
 
         command = (
@@ -757,8 +758,8 @@ class SimSerialBridge(Node):
         x_error_m = self.cart_x_m - self.x_center_m
         self.x_integral_cm_s = clamp(
             self.x_integral_cm_s + x_error_m * dt,
-            -0.20,
-            0.20,
+            -0.08,
+            0.08,
         )
 
         force = (
@@ -814,8 +815,8 @@ class SimSerialBridge(Node):
         x_error_m = self.cart_x_m - self.x_center_m
         self.x_integral_cm_s = clamp(
             self.x_integral_cm_s + x_error_m * dt,
-            -0.20,
-            0.20,
+            -0.08,
+            0.08,
         )
         center_scale = clamp(
             1.0 - abs(theta_top) / max(self.balance_fallback, 1e-3),
@@ -823,10 +824,16 @@ class SimSerialBridge(Node):
             1.0,
         )
 
-        theta_force_gain = abs(self.gains["K_TH"]) * (150.0 / 8.8)
-        theta_rate_force_gain = abs(self.gains["K_TH_D"]) * (72.0 / 1.8)
-        centering_force_gain = abs(self.gains["K_X"]) * (80.0 / 4.0)
-        cart_damping_force_gain = abs(self.gains["K_X_D"]) * (35.0 / 2.0)
+        theta_force_gain = abs(self.gains["K_TH"]) * (self.balance_theta_kp / 8.8)
+        theta_rate_force_gain = abs(self.gains["K_TH_D"]) * (
+            self.balance_theta_kd / 1.8
+        )
+        centering_force_gain = abs(self.gains["K_X"]) * (
+            self.balance_centering_force_gain / 4.0
+        )
+        cart_damping_force_gain = abs(self.gains["K_X_D"]) * (
+            self.balance_cart_damping_force_gain / 2.0
+        )
         integral_force_gain = abs(self.gains["K_X_INT"]) * (
             self.balance_integral_force_gain / 0.4
         )

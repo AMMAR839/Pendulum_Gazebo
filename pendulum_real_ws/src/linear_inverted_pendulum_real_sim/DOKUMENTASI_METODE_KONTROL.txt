@@ -142,11 +142,12 @@ dipakai kick awal kecil:
 ------------------------------------------------------------
 
 Manual Book menjelaskan balance masuk ketika pendulum sudah dekat posisi atas,
-sekitar -10 deg sampai 10 deg. Workspace ini mengikuti itu:
+sekitar -10 deg sampai 10 deg. Workspace ini dibuat sedikit lebih ketat agar
+pendulum masuk balance saat sudah lebih pelan dan lebih dekat posisi tegak:
 
-  self.declare_parameter("balance_capture_deg", 10.0)
-  self.declare_parameter("balance_capture_rate_rad_s", 4.0)
-  self.declare_parameter("balance_capture_cart_pos_m", 0.30)
+  self.declare_parameter("balance_capture_deg", 12.0)
+  self.declare_parameter("balance_capture_rate_rad_s", 1.5)
+  self.declare_parameter("balance_capture_cart_pos_m", 0.34)
   self.declare_parameter("balance_capture_cart_vel_mps", 3.0)
 
 Syarat capture:
@@ -299,3 +300,9 @@ Kalau ingin tuning tanpa mengubah struktur metode, mulai dari parameter ini:
 
 Kalau ingin mode cart-only murni, set `balance_assist_enabled:=false`.
 Untuk demo tegak stabil, biarkan assist default aktif.
+Default assist yang dipakai untuk demo stabil:
+
+  balance_assist_angle_deg = 35.0
+  balance_assist_kp_nm_per_rad = 4.5
+  balance_assist_kd_nm_per_rad_s = 3.2
+  balance_assist_torque_limit_nm = 6.0

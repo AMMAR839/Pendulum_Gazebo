@@ -1,0 +1,20 @@
+aspect,ros2_pendulum_ws,pendulum_real_ws,main_difference
+Tujuan utama,Demo simulasi yang lebih mudah tegak,Varian lebih dekat Manual Book LIP01,Demo ws mengejar keberhasilan visual sedangkan real ws mengejar karakter alat/manual
+Package,linear_inverted_pendulum_sim,linear_inverted_pendulum_real_sim,Package dan launch dipisah agar tuning tidak saling bercampur
+Launch file,sim.launch.py,real_sim.launch.py,File launch berbeda sesuai package
+Serial GUI,/tmp/pendulum_sim_serial,/tmp/pendulum_real_serial,Real ws harus memakai PENDULUM_SIM=1
+Model fisik dasar,Base 1.00 x 0.35 m; travel 0.78 m; pendulum 0.40 m 0.20 kg,Base 1.00 x 0.35 m; travel 0.78 m; pendulum 0.40 m 0.20 kg,Dimensi utama sama-sama mengikuti Manual Book
+Aktuator cart,Velocity command langsung diubah ke gaya dengan servo dan effort limit besar,Command melewati model motor PWM deadband dan respons orde satu,Real ws lebih lambat dan lebih mirip motor asli
+Effort limit cart,360 N,165 N,Demo ws punya gaya lebih besar agar lebih mudah menangkap pendulum
+Homing,PD posisi cart ke tengah,PD posisi cart ke tengah,Metode sama untuk tahap awal
+Swing-up,Energy based swing-up dengan gain 1.85 dan damping lebih besar,Energy based swing-up dengan gain 2.70 dan damping lebih kecil,Real ws pumping lebih agresif tetapi motor/force lebih dibatasi
+Capture balance,26 deg; theta_dot 3.5 rad/s; cart pos 0.24 m; cart vel 1.30 m/s,12 deg; theta_dot 1.5 rad/s; cart pos 0.34 m; cart vel 3.0 m/s,Real ws menunggu sudut lebih dekat tegak dan lebih pelan
+Catch method,LQR catch dekat atas sampai 130 deg dan 25 rad/s,Full-state catch region dekat atas sampai 65 deg dan 10 rad/s,Demo ws catch lebih awal dan lebih permisif
+Balance method,LQR force feedback default,Full-state upright force feedback default,Real ws lebih dekat bentuk gain manual theta theta_dot x x_dot
+balance_use_lqr,true,false,Menentukan jalur balance utama
+Assist engsel,Aktif default; angle 55 deg; kp 1.8; kd 0.38; limit 2.4 Nm,Aktif default; angle 35 deg; kp 4.5; kd 3.2; limit 6.0 Nm,Keduanya memakai assist simulasi tetapi real ws lebih sempit dan lebih kuat
+Motor manual book,Tidak memakai deadband PWM manual,Memakai p2 3212; p1 189.1; tau 0.40 s,Ini pembeda utama real ws
+Data output ROS,/joint_states; /pendulum/cart_velocity_cmd; /pendulum/cart_force_cmd; /pendulum/hinge_assist_force_cmd; /pendulum/sim_state,/joint_states; /pendulum/cart_velocity_cmd; /pendulum/cart_force_cmd; /pendulum/hinge_assist_force_cmd; /pendulum/sim_state,Topic output sama agar analisis CSV bisa dibandingkan langsung
+sim_state fields,degree; cmX; setspeed; energy; theta_dot_rad; theta_rad; x_center_cm; mode,degree; cmX; setspeed; energy; theta_dot_rad; theta_rad; x_center_cm; mode,Struktur data sama di kedua workspace
+Indikator berhasil,mode 7 stabil; degree dekat 0; theta_dot kecil; cart tidak mentok rail,mode 7 stabil; degree dekat 0; theta_dot kecil; cart tidak mentok rail,Indikator runtime sama tetapi real ws lebih sulit karena motor dan limit lebih realistis
+Kapan dipakai,Uji alur GUI dan demo tegak lebih cepat,Uji pendekatan yang lebih mirip trainer/manual,Memilih ws tergantung tujuan eksperimen

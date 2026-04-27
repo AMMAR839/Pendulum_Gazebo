@@ -21,10 +21,23 @@ from lib_gui import PendulumGUI
 PORT = os.environ.get("PENDULUM_PORT", "COM4")
 BAUD = int(os.environ.get("PENDULUM_BAUD", "115200"))
 NO_JOYSTICK = os.environ.get("PENDULUM_NO_JOYSTICK", "0") == "1"
-IS_SIM_PORT = PORT.startswith("/tmp/pendulum_sim_serial") or os.environ.get("PENDULUM_SIM", "0") == "1"
+IS_REAL_SIM_PORT = PORT.startswith("/tmp/pendulum_real_serial")
+IS_SIM_PORT = (
+	PORT.startswith("/tmp/pendulum_sim_serial")
+	or IS_REAL_SIM_PORT
+	or os.environ.get("PENDULUM_SIM", "0") == "1"
+)
 FPS = 50
 
-if IS_SIM_PORT:
+if IS_REAL_SIM_PORT:
+	DEFAULT_GAINS = {
+		"K_TH": 10.0,
+		"K_TH_D": 3.0,
+		"K_X": 2.4,
+		"K_X_D": 3.4,
+		"K_X_INT": 0.08
+	}
+elif IS_SIM_PORT:
 	DEFAULT_GAINS = {
 		"K_TH": 8.8,
 		"K_TH_D": 1.8,
