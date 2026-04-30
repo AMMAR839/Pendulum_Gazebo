@@ -125,7 +125,7 @@
     <child link="cart_link"/>
     <origin xyz="0 0 ${pivot_z}" rpy="0 0 0"/>
     <axis xyz="1 0 0"/>
-    <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="360.0" velocity="4.0"/>
+    <limit lower="${-travel / 2.0}" upper="${travel / 2.0}" effort="150.0" velocity="2.2"/>
     <dynamics damping="0.02" friction="0.0005"/>
   </joint>
 
