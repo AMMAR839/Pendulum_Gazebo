@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: linear-inverted-pendulum-pid-sim
+Version: 0.1.0
+Summary: ROS 2 Jazzy and Gazebo Harmonic PID simulation for a linear inverted pendulum.
+Maintainer: Ammar
+Maintainer-email: ammar@example.com
+License: MIT

@@ -41,28 +41,32 @@ pendulum_real_ws,method,balance_assist,real_serial_bridge.py,type,hinge torque a
 pendulum_real_ws,parameter,status_rate_hz,real_serial_bridge.py,Hz,100.0,Rate publish status dan sim_state,Semakin tinggi semakin rapat data runtime
 pendulum_real_ws,parameter,cart_velocity_limit_mps,real_serial_bridge.py,m/s,2.20,Batas command kecepatan cart,Membatasi setspeed sebelum masuk model motor
 pendulum_real_ws,parameter,command_accel_limit_mps2,real_serial_bridge.py,m/s^2,14.0,Batas perubahan command cart,Mengurangi lonjakan command
-pendulum_real_ws,parameter,swing_gain,real_serial_bridge.py,gain,2.70,Besar pumping energi swing-up,Lebih agresif daripada demo ws
-pendulum_real_ws,parameter,swing_centering_gain,real_serial_bridge.py,gain,0.42,Penarik cart ke tengah saat swing-up,Lebih kecil agar swing-up tidak terlalu ditahan
-pendulum_real_ws,parameter,swing_damping_gain,real_serial_bridge.py,gain,0.12,Damping cart saat swing-up,Lebih kecil daripada demo ws
-pendulum_real_ws,parameter,swing_kick_mps,real_serial_bridge.py,m/s,0.82,Kick awal saat pendulum diam di bawah,Lebih besar agar swing-up mulai walau motor lebih lambat
-pendulum_real_ws,parameter,balance_capture_deg,real_serial_bridge.py,deg,12.0,Jendela sudut untuk masuk balance,Lebih ketat dan dekat Manual Book sekitar +/-10 deg
-pendulum_real_ws,parameter,balance_capture_rate_rad_s,real_serial_bridge.py,rad/s,1.5,Batas theta_dot untuk capture,Lebih ketat supaya balance aktif saat pendulum lebih pelan
-pendulum_real_ws,parameter,balance_capture_cart_pos_m,real_serial_bridge.py,m,0.34,Batas posisi cart saat capture,Cart boleh lebih jauh daripada demo ws
-pendulum_real_ws,parameter,balance_capture_cart_vel_mps,real_serial_bridge.py,m/s,3.0,Batas kecepatan cart saat capture,Nilai command boleh besar tetapi motor tetap punya delay
-pendulum_real_ws,parameter,balance_fallback_deg,real_serial_bridge.py,deg,80.0,Batas kehilangan balance,Sudut lebih jauh membuat mode balik ke swing-up
-pendulum_real_ws,parameter,catch_region_deg,real_serial_bridge.py,deg,65.0,Area masuk catch feedback,Area lebih dekat atas daripada LQR catch demo ws
-pendulum_real_ws,parameter,catch_region_rate_rad_s,real_serial_bridge.py,rad/s,10.0,Batas theta_dot untuk catch,Menahan ayunan sebelum capture
-pendulum_real_ws,parameter,catch_force_limit_n,real_serial_bridge.py,N,145.0,Batas gaya saat catch,Nilai lebih realistis daripada demo ws
-pendulum_real_ws,parameter,balance_force_limit_n,real_serial_bridge.py,N,150.0,Batas gaya saat balance,Nilai lebih realistis daripada demo ws
+pendulum_real_ws,parameter,swing_gain,real_serial_bridge.py,gain,2.70,Besar pumping energi swing-up,Dikembalikan agar swing-up bisa mencapai area atas
+pendulum_real_ws,parameter,swing_centering_gain,real_serial_bridge.py,gain,0.32,Penarik cart ke tengah saat swing-up,Lebih kecil agar pumping tidak terlalu agresif
+pendulum_real_ws,parameter,swing_damping_gain,real_serial_bridge.py,gain,0.10,Damping cart saat swing-up,Lebih kecil tetapi tetap menahan cart
+pendulum_real_ws,parameter,swing_kick_mps,real_serial_bridge.py,m/s,0.82,Kick awal saat pendulum diam di bawah,Cukup kuat agar swing-up mulai
+pendulum_real_ws,parameter,swing_force_limit_n,real_serial_bridge.py,N,145.0,Batas gaya saat swing-up,Dikembalikan karena 90-120 N belum bisa mencapai area atas
+pendulum_real_ws,parameter,swing_min_top_passes_before_catch,real_serial_bridge.py,count,3,Jumlah minimal pass area atas sebelum catch,Memperbanyak ayunan sebelum balance tanpa mengunci swing-up
+pendulum_real_ws,parameter,swing_min_energy_build_time_s,real_serial_bridge.py,s,5.0,Waktu minimal swing-up sebelum catch,Mencegah balance terlalu cepat
+pendulum_real_ws,parameter,swing_energy_ready_ratio,real_serial_bridge.py,ratio,0.84,Rasio energi minimal sebelum catch,Memastikan energi cukup sebelum capture
+pendulum_real_ws,parameter,balance_capture_deg,real_serial_bridge.py,deg,9.0,Jendela sudut untuk masuk balance,Lebih dekat Manual Book sekitar +/-10 deg
+pendulum_real_ws,parameter,balance_capture_rate_rad_s,real_serial_bridge.py,rad/s,1.0,Batas theta_dot untuk capture,Lebih ketat supaya balance aktif saat pendulum lebih pelan
+pendulum_real_ws,parameter,balance_capture_cart_pos_m,real_serial_bridge.py,m,0.30,Batas posisi cart saat capture,Menjaga balance tidak masuk terlalu dekat ujung rel
+pendulum_real_ws,parameter,balance_capture_cart_vel_mps,real_serial_bridge.py,m/s,1.4,Batas kecepatan cart saat capture,Mengurangi kebutuhan force balance
+pendulum_real_ws,parameter,balance_fallback_deg,real_serial_bridge.py,deg,45.0,Batas kehilangan balance,Jika sudut terlalu jauh mode kembali ke swing-up
+pendulum_real_ws,parameter,catch_region_deg,real_serial_bridge.py,deg,95.0,Area masuk catch feedback,Dilebarkan agar swing-up bisa ditangkap sebelum jatuh lagi
+pendulum_real_ws,parameter,catch_region_rate_rad_s,real_serial_bridge.py,rad/s,14.0,Batas theta_dot untuk catch,Masih menahan ayunan yang terlalu cepat
+pendulum_real_ws,parameter,catch_force_limit_n,real_serial_bridge.py,N,95.0,Batas gaya saat catch,Dijaga di bawah 100 N
+pendulum_real_ws,parameter,balance_force_limit_n,real_serial_bridge.py,N,45.0,Batas gaya saat balance,Tidak dibiarkan sampai ratusan N
 pendulum_real_ws,parameter,balance_use_lqr,real_serial_bridge.py,bool,false,LQR tidak menjadi jalur balance default,Controller utama memakai upright force feedback
 pendulum_real_ws,parameter,balance_assist_enabled,real_serial_bridge.py,bool,true,Assist engsel aktif secara default,Set false untuk eksperimen cart-only
-pendulum_real_ws,parameter,balance_assist_angle_deg,real_serial_bridge.py,deg,35.0,Area sudut assist aktif,Lebih sempit daripada demo ws
-pendulum_real_ws,parameter,balance_assist_kp_nm_per_rad,real_serial_bridge.py,Nm/rad,4.5,Gain proporsional assist engsel,Lebih kuat daripada demo ws
-pendulum_real_ws,parameter,balance_assist_kd_nm_per_rad_s,real_serial_bridge.py,Nm/(rad/s),3.2,Gain damping assist engsel,Jauh lebih kuat untuk demo stabil
-pendulum_real_ws,parameter,balance_assist_torque_limit_nm,real_serial_bridge.py,Nm,6.0,Batas torsi assist engsel,Lebih besar daripada demo ws
+pendulum_real_ws,parameter,balance_assist_angle_deg,real_serial_bridge.py,deg,115.0,Area sudut assist aktif,Dilebarkan agar swing-up bisa ditangkap sebagai bantuan simulasi
+pendulum_real_ws,parameter,balance_assist_kp_nm_per_rad,real_serial_bridge.py,Nm/rad,3.4,Gain proporsional assist engsel,Bantuan simulasi untuk menuju tegak
+pendulum_real_ws,parameter,balance_assist_kd_nm_per_rad_s,real_serial_bridge.py,Nm/(rad/s),2.4,Gain damping assist engsel,Bantuan simulasi untuk meredam ayunan
+pendulum_real_ws,parameter,balance_assist_torque_limit_nm,real_serial_bridge.py,Nm,4.5,Batas torsi assist engsel,Dibatasi agar tidak terlalu besar
 pendulum_real_ws,parameter,motor_pwm_deadband,real_serial_bridge.py,PWM,3212.0,Deadband PWM motor dari Manual Book,Command kecil tidak langsung menghasilkan gerak efektif
 pendulum_real_ws,parameter,motor_pwm_per_cmps,real_serial_bridge.py,PWM/(cm/s),189.1,Slope mapping PWM terhadap kecepatan motor,Dipakai mengubah command cm/s ke PWM ekuivalen
 pendulum_real_ws,parameter,motor_time_constant_s,real_serial_bridge.py,s,0.40,Konstanta waktu motor,Respons motor dibuat lambat seperti orde satu
-pendulum_real_ws,parameter,motor_velocity_servo_p,real_serial_bridge.py,gain,90.0,Servo kecepatan motor ke gaya,Mengubah velocity error menjadi force
-pendulum_real_ws,parameter,motor_velocity_servo_d,real_serial_bridge.py,gain,4.0,Damping servo motor,Mengurangi overshoot velocity servo
-pendulum_real_ws,parameter,effort_limit_n,real_serial_bridge.py,N,165.0,Batas gaya akhir ke cart,Lebih kecil dan lebih realistis daripada demo ws
+pendulum_real_ws,parameter,motor_velocity_servo_p,real_serial_bridge.py,gain,55.0,Servo kecepatan motor ke gaya,Diturunkan agar velocity servo tidak membuat lonjakan force
+pendulum_real_ws,parameter,motor_velocity_servo_d,real_serial_bridge.py,gain,1.2,Damping servo motor,Diturunkan agar derivative spike tidak besar
+pendulum_real_ws,parameter,effort_limit_n,real_serial_bridge.py,N,150.0,Batas gaya akhir ke cart,Dibutuhkan untuk swing-up tetapi balance tetap dibatasi rendah

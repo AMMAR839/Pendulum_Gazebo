@@ -1,0 +1,17 @@
+[1.529s] Invoking command in '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PS1=(venv-ardupilot) (venv-ardupilot) PYTHONPATH=/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/python3.12/site-packages:${PYTHONPATH} VIRTUAL_ENV_PROMPT=(venv-ardupilot) /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/build --no-deps symlink_data
+[2.138s] running develop
+[2.548s] running egg_info
+[2.586s] writing linear_inverted_pendulum_real_sim.egg-info/PKG-INFO
+[2.587s] writing dependency_links to linear_inverted_pendulum_real_sim.egg-info/dependency_links.txt
+[2.587s] writing entry points to linear_inverted_pendulum_real_sim.egg-info/entry_points.txt
+[2.587s] writing requirements to linear_inverted_pendulum_real_sim.egg-info/requires.txt
+[2.588s] writing top-level names to linear_inverted_pendulum_real_sim.egg-info/top_level.txt
+[2.665s] reading manifest file 'linear_inverted_pendulum_real_sim.egg-info/SOURCES.txt'
+[2.666s] writing manifest file 'linear_inverted_pendulum_real_sim.egg-info/SOURCES.txt'
+[2.707s] running build_ext
+[2.707s] Creating /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/python3.12/site-packages/linear-inverted-pendulum-real-sim.egg-link (link to .)
+[2.708s] Installing real_serial_bridge script to /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/linear_inverted_pendulum_real_sim
+[2.709s] 
+[2.709s] Installed /home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim
+[2.709s] running symlink_data
+[2.777s] Invoked command in '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PS1=(venv-ardupilot) (venv-ardupilot) PYTHONPATH=/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/python3.12/site-packages:${PYTHONPATH} VIRTUAL_ENV_PROMPT=(venv-ardupilot) /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/build --no-deps symlink_data

@@ -41,7 +41,7 @@ Potongan URDF:
 Joint cart dibatasi mengikuti actuator yang lebih realistis:
 
   <limit lower="${-travel / 2.0}" upper="${travel / 2.0}"
-         effort="165.0" velocity="3.0"/>
+         effort="150.0" velocity="2.2"/>
 
 Catatan penting:
 Workspace ini sekarang memakai plugin ApplyJointForce pada cart_slider dan
@@ -117,7 +117,7 @@ Controller swing-up:
   phase = self.pendulum_vel_radps * math.cos(theta_top)
   energy_deficit = target_energy - energy
 
-  force = -52.0 * self.swing_gain * energy_deficit * phase
+  force = 52.0 * self.swing_gain * energy_deficit * phase
   force -= 34.0 * self.swing_centering_gain * self.cart_x_m
   force -= 14.0 * self.swing_damping_gain * self.cart_v_mps
 
@@ -137,6 +137,22 @@ dipakai kick awal kecil:
           kick_direction = 1.0 if int(elapsed / 0.45) % 2 == 0 else -1.0
       force += kick_direction * max(35.0, 70.0 * self.swing_kick_mps)
 
+Supaya hasil lebih masuk akal secara energi, workspace ini tidak langsung
+menangkap ayunan pertama. Force swing-up diturunkan agar pendulum perlu
+mengayun lebih banyak, lalu catch baru aktif setelah pendulum melewati area
+atas beberapa kali dan energi sudah cukup:
+
+  swing_gain = 2.70
+  swing_kick_mps = 0.82
+  swing_force_limit_n = 145.0
+  swing_min_top_passes_before_catch = 3
+  swing_min_energy_build_time_s = 5.0
+  swing_energy_ready_ratio = 0.84
+  swing_top_pass_angle_deg = 80.0
+
+Jika tombol A ditekan saat SWING_UP belum siap, bridge menyimpan request balance
+dan tetap mengayun sampai syarat energi/capture terpenuhi.
+
 
 5. TRANSISI SWING_UP KE BALANCE
 ------------------------------------------------------------
@@ -145,10 +161,10 @@ Manual Book menjelaskan balance masuk ketika pendulum sudah dekat posisi atas,
 sekitar -10 deg sampai 10 deg. Workspace ini dibuat sedikit lebih ketat agar
 pendulum masuk balance saat sudah lebih pelan dan lebih dekat posisi tegak:
 
-  self.declare_parameter("balance_capture_deg", 12.0)
-  self.declare_parameter("balance_capture_rate_rad_s", 1.5)
-  self.declare_parameter("balance_capture_cart_pos_m", 0.34)
-  self.declare_parameter("balance_capture_cart_vel_mps", 3.0)
+  self.declare_parameter("balance_capture_deg", 9.0)
+  self.declare_parameter("balance_capture_rate_rad_s", 1.0)
+  self.declare_parameter("balance_capture_cart_pos_m", 0.30)
+  self.declare_parameter("balance_capture_cart_vel_mps", 1.4)
 
 Syarat capture:
 
@@ -158,6 +174,29 @@ Syarat capture:
       and abs(self.cart_x_m) < capture_cart_pos
       and abs(self.cart_v_mps) < self.balance_capture_cart_vel
   )
+
+Sebelum syarat capture di atas dipakai, gate swing-up juga harus sudah siap:
+
+  swing_top_passes >= swing_min_top_passes_before_catch
+  atau waktu SWING_UP >= swing_min_energy_build_time_s
+  energy / target_energy >= swing_energy_ready_ratio
+
+Artinya pendulum harus benar-benar dibangun energinya lewat beberapa ayunan,
+bukan langsung dipaksa balance pada ayunan pertama. Gate waktu mencegah kondisi
+terkunci jika pendulum sudah berosilasi dekat atas dan tidak lagi kembali jauh
+ke bawah.
+
+Capture dibuat lebih ketat agar balance tidak meminta gaya besar karena masuk
+terlalu awal:
+
+  balance_capture_deg = 9.0
+  balance_capture_rate_rad_s = 1.0
+  balance_capture_cart_pos_m = 0.30
+  balance_capture_cart_vel_mps = 1.4
+  catch_region_deg = 95.0
+  catch_region_rate_rad_s = 14.0
+  catch_force_limit_n = 95.0
+  balance_force_limit_n = 45.0
 
 Jika semua syarat terpenuhi, mode otomatis menjadi BALANCE:
 
@@ -214,7 +253,7 @@ SWING_UP:
 
 Default fallback:
 
-  self.declare_parameter("balance_fallback_deg", 50.0)
+  self.declare_parameter("balance_fallback_deg", 45.0)
 
 
 7. MODEL MOTOR ALA MANUAL BOOK
@@ -255,9 +294,24 @@ Parameter motor:
   self.declare_parameter("motor_pwm_deadband", 3212.0)
   self.declare_parameter("motor_pwm_per_cmps", 189.1)
   self.declare_parameter("motor_time_constant_s", 0.40)
-  self.declare_parameter("motor_velocity_servo_p", 90.0)
-  self.declare_parameter("motor_velocity_servo_d", 4.0)
-  self.declare_parameter("effort_limit_n", 60.0)
+  self.declare_parameter("motor_velocity_servo_p", 55.0)
+  self.declare_parameter("motor_velocity_servo_d", 1.2)
+  self.declare_parameter("effort_limit_n", 150.0)
+
+Gaya cart tidak boleh lagi dibiarkan sampai ratusan N. Default baru dibuat
+bertingkat:
+
+  swing_force_limit_n = 145.0
+  catch_force_limit_n = 95.0
+  balance_force_limit_n = 45.0
+  effort_limit_n = 150.0
+
+Kalau mode BALANCE tetap membutuhkan gaya besar, penyebab teknisnya biasanya
+bukan karena "balance memang harus ratusan N", tetapi karena capture terlalu
+awal: sudut masih jauh dari tegak, theta-dot masih tinggi, cart sudah terlalu
+cepat, atau cart sudah dekat ujung rail sehingga rail guard harus menarik balik.
+Karena itu solusi yang lebih bisa dipertanggungjawabkan adalah memperketat
+capture dan memperbanyak swing-up, bukan menaikkan force lagi.
 
 
 8. PERBEDAAN DENGAN WORKSPACE LAMA
@@ -290,6 +344,10 @@ Kalau ingin tuning tanpa mengubah struktur metode, mulai dari parameter ini:
   swing_gain
   swing_centering_gain
   swing_damping_gain
+  swing_force_limit_n
+  swing_min_top_passes_before_catch
+  swing_min_energy_build_time_s
+  swing_energy_ready_ratio
   motor_time_constant_s
   balance_assist_kp_nm_per_rad
   balance_assist_kd_nm_per_rad_s
@@ -302,7 +360,7 @@ Kalau ingin mode cart-only murni, set `balance_assist_enabled:=false`.
 Untuk demo tegak stabil, biarkan assist default aktif.
 Default assist yang dipakai untuk demo stabil:
 
-  balance_assist_angle_deg = 35.0
-  balance_assist_kp_nm_per_rad = 4.5
-  balance_assist_kd_nm_per_rad_s = 3.2
-  balance_assist_torque_limit_nm = 6.0
+  balance_assist_angle_deg = 115.0
+  balance_assist_kp_nm_per_rad = 3.4
+  balance_assist_kd_nm_per_rad_s = 2.4
+  balance_assist_torque_limit_nm = 4.5

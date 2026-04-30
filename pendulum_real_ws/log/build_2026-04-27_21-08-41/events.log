@@ -1,0 +1,56 @@
+[0.000000] (-) TimerEvent: {}
+[0.000432] (linear_inverted_pendulum_real_sim) JobQueued: {'identifier': 'linear_inverted_pendulum_real_sim', 'dependencies': OrderedDict()}
+[0.001188] (linear_inverted_pendulum_real_sim) JobStarted: {'identifier': 'linear_inverted_pendulum_real_sim'}
+[0.099676] (-) TimerEvent: {}
+[0.199949] (-) TimerEvent: {}
+[0.300537] (-) TimerEvent: {}
+[0.402388] (-) TimerEvent: {}
+[0.502685] (-) TimerEvent: {}
+[0.602992] (-) TimerEvent: {}
+[0.703282] (-) TimerEvent: {}
+[0.803564] (-) TimerEvent: {}
+[0.903833] (-) TimerEvent: {}
+[1.004085] (-) TimerEvent: {}
+[1.104369] (-) TimerEvent: {}
+[1.204664] (-) TimerEvent: {}
+[1.304995] (-) TimerEvent: {}
+[1.405276] (-) TimerEvent: {}
+[1.505565] (-) TimerEvent: {}
+[1.605828] (-) TimerEvent: {}
+[1.706098] (-) TimerEvent: {}
+[1.806345] (-) TimerEvent: {}
+[1.906686] (-) TimerEvent: {}
+[1.965520] (linear_inverted_pendulum_real_sim) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/build', '--no-deps', 'symlink_data'], 'cwd': '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim', 'env': {'GJS_DEBUG_TOPICS': 'JS ERROR;JS LOG', 'LESSOPEN': '| /usr/bin/lesspipe %s', 'VSCODE_CWD': '/home/ammar', 'VSCODE_ESM_ENTRYPOINT': 'vs/workbench/api/node/extensionHostProcess', 'CODEX_CI': '1', 'GZ_SIM_RESOURCE_PATH': '/opt/ros/jazzy/share', 'USER': 'ammar', 'CODEX_INTERNAL_ORIGINATOR_OVERRIDE': 'codex_vscode', 'VSCODE_NLS_CONFIG': '{"userLocale":"en-us","osLocale":"en-us","resolvedLanguage":"en","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","locale":"en-us","availableLanguages":{}}', 'GZ_CONFIG_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/share/gz:/opt/ros/jazzy/opt/sdformat_vendor/share/gz:/opt/ros/jazzy/opt/gz_gui_vendor/share/gz:/opt/ros/jazzy/opt/gz_transport_vendor/share/gz:/opt/ros/jazzy/opt/gz_rendering_vendor/share/gz:/opt/ros/jazzy/opt/gz_plugin_vendor/share/gz:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/share/gz:/opt/ros/jazzy/opt/gz_msgs_vendor/share/gz:/opt/ros/jazzy/opt/gz_common_vendor/share/gz', 'VSCODE_HANDLES_UNCAUGHT_ERRORS': 'true', 'XDG_SESSION_TYPE': 'wayland', 'DEBUG': 'release', 'CLUTTER_DISABLE_MIPMAPPED_TEXT': '1', 'SHLVL': '0', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/lib:/opt/ros/jazzy/opt/gz_sensors_vendor/lib:/opt/ros/jazzy/opt/gz_physics_vendor/lib:/opt/ros/jazzy/opt/sdformat_vendor/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_gui_vendor/lib:/opt/ros/jazzy/opt/gz_transport_vendor/lib:/opt/ros/jazzy/opt/gz_rendering_vendor/lib:/opt/ros/jazzy/opt/gz_plugin_vendor/lib:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/lib:/opt/ros/jazzy/opt/gz_msgs_vendor/lib:/opt/ros/jazzy/opt/gz_common_vendor/lib:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_tools_vendor/lib:/opt/ros/jazzy/opt/gz_ogre_next_vendor/lib:/opt/ros/jazzy/opt/gz_dartsim_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/home/ammar', 'CHROME_DESKTOP': 'code.desktop', 'DESKTOP_SESSION': 'ubuntu', 'VSCODE_IPC_HOOK': '/run/user/1000/vscode-02e9184a-1.11-main.sock', 'GIO_LAUNCHED_DESKTOP_FILE': '/usr/share/applications/code.desktop', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'PAGER': 'cat', 'PS1': '(venv-ardupilot) (venv-ardupilot)', 'MANAGERPID': '1815', 'LC_CTYPE': 'C.UTF-8', 'SYSTEMD_EXEC_PID': '2090', 'IM_CONFIG_CHECK_ENV': '1', 'GSM_SKIP_SSH_AGENT_WORKAROUND': 'true', 'NO_COLOR': '1', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLORTERM': '', 'GIO_LAUNCHED_DESKTOP_FILE_PID': '7103', 'VSCODE_CRASH_REPORTER_PROCESS_TYPE': 'extensionHost', 'DEBUGINFOD_URLS': 'https://debuginfod.ubuntu.com', 'IM_CONFIG_PHASE': '1', 'WAYLAND_DISPLAY': 'wayland-0', 'ROS_DISTRO': 'jazzy', 'LOGNAME': 'ammar', 'JOURNAL_STREAM': '9:17616', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'MEMORY_PRESSURE_WATCH': '/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@wayland.service/memory.pressure', 'XDG_SESSION_CLASS': 'user', 'RUST_LOG': 'warn', 'USERNAME': 'ammar', 'TERM': 'dumb', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'FC_FONTATIONS': '1', 'PATH': '/home/ammar/ardu_ws/src/ardupilot/Tools/autotest:/home/ammar/venv-ardupilot/bin:/home/ammar/.local/bin:/home/ammar/ardu_ws/src/ardupilot/Tools/autotest:/home/ammar/venv-ardupilot/bin:/home/ammar/.local/bin:/home/ammar/.codex/tmp/arg0/codex-arg0FuTo47:/home/ammar/ardu_ws/src/ardupilot/Tools/autotest:/home/ammar/venv-ardupilot/bin:/home/ammar/.local/bin:/opt/ros/jazzy/opt/gz_msgs_vendor/bin:/opt/ros/jazzy/opt/gz_tools_vendor/bin:/opt/ros/jazzy/opt/gz_ogre_next_vendor/bin:/opt/ros/jazzy/bin:/home/ammar/ardu_ws/src/ardupilot/Tools/autotest:/home/ammar/venv-ardupilot/bin:/home/ammar/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/ammar/.local/bin:/home/ammar/ardu_ws/Micro-XRCE-DDS-Gen/scripts:/home/ammar/ardu_ws/Micro-XRCE-DDS-Gen/scripts:/home/ammar/.vscode/extensions/openai.chatgpt-26.5422.30944-linux-x64/bin/linux-x86_64', 'SESSION_MANAGER': 'local/ammar-Swift-SF314-43:@/tmp/.ICE-unix/2043,unix/ammar-Swift-SF314-43:/tmp/.ICE-unix/2043', 'INVOCATION_ID': '67d545f09c094798815238e3eb4e0357', 'XDG_MENU_PREFIX': 'gnome-', 'GNOME_SETUP_DISPLAY': ':1', 'XDG_RUNTIME_DIR': '/run/user/1000', 'GDK_BACKEND': 'wayland', 'MAMBA_ROOT_PREFIX': '/home/ammar/miniforge3', 'DISPLAY': ':0', 'LANG': 'C.UTF-8', 'XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'VIRTUAL_ENV_PROMPT': '(venv-ardupilot)', 'XMODIFIERS': '@im=ibus', 'GH_PAGER': 'cat', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/.mutter-Xwaylandauth.826WN3', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'ROS_DOMAIN_ID': '0', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'SHELL': '/bin/bash', 'QT_ACCESSIBILITY': '1', 'ELECTRON_RUN_AS_NODE': '1', 'GDMSESSION': 'ubuntu', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'CODEX_THREAD_ID': '019dcede-82de-72f2-ba17-c8edfdf39918', 'GJS_DEBUG_OUTPUT': 'stderr', 'MAMBA_EXE': '/home/ammar/miniforge3/bin/mamba', 'VIRTUAL_ENV': '/home/ammar/venv-ardupilot', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'GIT_PAGER': 'cat', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim', 'LC_ALL': 'C.UTF-8', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'VSCODE_CODE_CACHE_PATH': '/home/ammar/.config/Code/CachedData/cfbea10c5ffb233ea9177d34726e6056e89913dc', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'MEMORY_PRESSURE_WRITE': 'c29tZSAyMDAwMDAgMjAwMDAwMAA=', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor', 'VSCODE_PID': '7103'}, 'shell': False}
+[2.006861] (-) TimerEvent: {}
+[2.107104] (-) TimerEvent: {}
+[2.207333] (-) TimerEvent: {}
+[2.307558] (-) TimerEvent: {}
+[2.407801] (-) TimerEvent: {}
+[2.508100] (-) TimerEvent: {}
+[2.608494] (-) TimerEvent: {}
+[2.651403] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'running develop\n'}
+[2.708605] (-) TimerEvent: {}
+[2.808862] (-) TimerEvent: {}
+[2.909108] (-) TimerEvent: {}
+[3.009358] (-) TimerEvent: {}
+[3.085743] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'running egg_info\n'}
+[3.109525] (-) TimerEvent: {}
+[3.145574] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'writing linear_inverted_pendulum_real_sim.egg-info/PKG-INFO\n'}
+[3.145947] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'writing dependency_links to linear_inverted_pendulum_real_sim.egg-info/dependency_links.txt\n'}
+[3.147279] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'writing entry points to linear_inverted_pendulum_real_sim.egg-info/entry_points.txt\n'}
+[3.154226] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'writing requirements to linear_inverted_pendulum_real_sim.egg-info/requires.txt\n'}
+[3.154635] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'writing top-level names to linear_inverted_pendulum_real_sim.egg-info/top_level.txt\n'}
+[3.209653] (-) TimerEvent: {}
+[3.286253] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b"reading manifest file 'linear_inverted_pendulum_real_sim.egg-info/SOURCES.txt'\n"}
+[3.289248] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b"writing manifest file 'linear_inverted_pendulum_real_sim.egg-info/SOURCES.txt'\n"}
+[3.309866] (-) TimerEvent: {}
+[3.348921] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'running build_ext\n'}
+[3.349289] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'Creating /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/python3.12/site-packages/linear-inverted-pendulum-real-sim.egg-link (link to .)\n'}
+[3.350963] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'Installing real_serial_bridge script to /home/ammar/Documents/Pendulum/pendulum_real_ws/install/linear_inverted_pendulum_real_sim/lib/linear_inverted_pendulum_real_sim\n'}
+[3.351774] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'\n'}
+[3.352120] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'Installed /home/ammar/Documents/Pendulum/pendulum_real_ws/build/linear_inverted_pendulum_real_sim\n'}
+[3.352363] (linear_inverted_pendulum_real_sim) StdoutLine: {'line': b'running symlink_data\n'}
+[3.410453] (-) TimerEvent: {}
+[3.461293] (linear_inverted_pendulum_real_sim) CommandEnded: {'returncode': 0}
+[3.488896] (linear_inverted_pendulum_real_sim) JobEnded: {'identifier': 'linear_inverted_pendulum_real_sim', 'rc': 0}
+[3.490417] (-) EventReactorShutdown: {}

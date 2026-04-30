@@ -1,0 +1,1 @@
+/home/ammar/Documents/Pendulum/pendulum_pid_ws/build/linear_inverted_pendulum_pid_sim/DOKUMENTASI_METODE_KONTROL.txt

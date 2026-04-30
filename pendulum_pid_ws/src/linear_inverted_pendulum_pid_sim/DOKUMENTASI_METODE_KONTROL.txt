@@ -1,0 +1,194 @@
+DOKUMENTASI METODE KONTROL - PENDULUM_PID_WS
+============================================================
+
+Tujuan workspace ini:
+- Membuat workspace baru yang diturunkan dari pendulum_real_ws.
+- Mempertahankan model Gazebo, swing-up, motor model, capture, dan assist
+  simulasi yang sudah terbukti lebih stabil.
+- Mengganti balance controller menjadi PID, bukan LQR dan bukan full-state
+  feedback Manual Book.
+- Tetap bisa dipakai GUI Python lama lewat pseudo serial.
+
+Lokasi workspace:
+  /home/ammar/Documents/Pendulum/pendulum_pid_ws
+
+Package:
+  linear_inverted_pendulum_pid_sim
+
+Launch:
+  ros2 launch linear_inverted_pendulum_pid_sim pid_sim.launch.py
+
+GUI:
+  PENDULUM_PORT=/tmp/pendulum_pid_serial PENDULUM_SIM=1 PENDULUM_NO_JOYSTICK=1 python3 main.py
+
+main.py sudah mengenali /tmp/pendulum_pid_serial sebagai port real-style, jadi
+default gain GUI sama dengan baseline pendulum_real_ws:
+  K_TH=10.0, K_TH_D=3.0, K_X=2.4, K_X_D=3.4, K_X_INT=0.08
+
+
+1. DATA FISIK DAN MODEL
+------------------------------------------------------------
+
+Workspace ini memakai URDF dari baseline pendulum_real_ws:
+- Travel rail 78 cm.
+- Base 1000 mm x 350 mm.
+- Pendulum shaft diameter 8 mm.
+- Panjang pendulum 400 mm.
+- Massa pendulum 200 g.
+- Motor memakai deadband PWM 3212, slope 189.1 PWM/(cm/s), dan konstanta waktu
+  sekitar 0.4 s.
+
+Assist engsel tetap aktif secara default agar demo Gazebo bisa berdiri tegak.
+Assist ini khusus simulasi dan bukan aktuator tambahan pada alat asli.
+
+
+2. MODE KONTROL
+------------------------------------------------------------
+
+Mode yang dikirim ke GUI:
+- 1 WAITING
+- 2 HOMING
+- 3 READY
+- 4 SINE
+- 5 FINISH
+- 6 SWING_UP
+- 7 BALANCE
+
+Alur utama:
+1. START dari GUI.
+2. Tombol Y untuk homing.
+3. Tombol X untuk swing-up.
+4. Jika kondisi capture terpenuhi, bridge otomatis masuk BALANCE.
+5. Tombol A hanya untuk memaksa BALANCE saat pendulum sudah dekat tegak.
+
+
+3. HOMING
+------------------------------------------------------------
+
+Homing masih PD sederhana:
+
+  error = self.x_center_m - self.cart_x_m
+  command = 2.8 * error - 0.35 * self.cart_v_mps
+
+Bagian ini bukan target perubahan. Fungsinya hanya membawa cart ke tengah
+sebelum swing-up.
+
+
+4. SWING-UP BERBASIS ENERGI
+------------------------------------------------------------
+
+Swing-up tetap memakai energy-based controller dari baseline:
+
+  energy = self._energy(theta_top)
+  target_energy = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
+  phase = self.pendulum_vel_radps * math.cos(theta_top)
+  energy_deficit = target_energy - energy
+
+  force = 52.0 * self.swing_gain * energy_deficit * phase
+  force -= 34.0 * self.swing_centering_gain * self.cart_x_m
+  force -= 14.0 * self.swing_damping_gain * self.cart_v_mps
+
+Capture ke balance dibuat aman:
+
+  abs(theta_top) < balance_capture
+  abs(theta_dot) < balance_capture_rate
+  abs(cart_x) < balance_capture_cart_pos
+  abs(cart_v) < balance_capture_cart_vel
+
+Default penting:
+
+  swing_gain = 2.70
+  swing_force_limit_n = 145.0
+  balance_capture_deg = 9.0
+  balance_capture_rate_rad_s = 1.0
+  balance_capture_cart_pos_m = 0.30
+  balance_capture_cart_vel_mps = 1.4
+
+
+5. BALANCE PID
+------------------------------------------------------------
+
+Bagian inilah perbedaan utama workspace ini.
+
+Balance memakai PID pada error sudut pendulum terhadap posisi tegak:
+- P = theta_top
+- I = integral theta_top
+- D = pendulum_vel_radps
+
+Rumus inti:
+
+  theta_integral_rad_s = clamp(
+      theta_integral_rad_s + theta_top * dt,
+      -0.18,
+      0.18,
+  )
+
+  force_pid = (
+      -Kp_theta * theta_top
+      -Kd_theta * pendulum_vel_radps
+      -Ki_theta * theta_integral_rad_s
+  )
+
+Untuk menjaga cart tidak lari ke ujung rail, PID sudut ditambah PD posisi cart:
+
+  force_cart = (
+      -Kp_cart * x_error_m
+      -Kd_cart * cart_v_mps
+  )
+
+Total gaya:
+
+  force = force_pid + center_scale * force_cart
+
+Mapping gain dari GUI:
+
+  K_TH     -> P sudut pendulum
+  K_TH_D   -> D sudut pendulum
+  K_X_INT  -> I sudut pendulum
+  K_X      -> P posisi cart
+  K_X_D    -> D kecepatan cart
+
+Default gain:
+
+  K_TH    = 10.0
+  K_TH_D  = 3.0
+  K_X     = 2.4
+  K_X_D   = 3.4
+  K_X_INT = 0.08
+
+Catatan:
+- Tidak ada parameter balance_use_lqr di workspace ini.
+- Tidak ada perhitungan gain LQR.
+- Tidak ada jalur _state_feedback_force_locked untuk balance.
+- Balance force dibatasi 45 N agar tetap masuk akal untuk simulasi aktuator.
+
+
+6. MODEL MOTOR
+------------------------------------------------------------
+
+Command controller tidak langsung menjadi gaya besar. Bridge mengubah command
+menjadi PWM ekuivalen, lalu memberi respons motor orde satu:
+
+  motor_pwm = motor_pwm_deadband + motor_pwm_per_cmps * abs(command_cmps)
+  alpha = 1.0 - math.exp(-dt / motor_time_constant_s)
+  motor_velocity_mps += alpha * (target_mps - motor_velocity_mps)
+
+Parameter:
+
+  motor_pwm_deadband = 3212.0
+  motor_pwm_per_cmps = 189.1
+  motor_time_constant_s = 0.40
+  motor_velocity_servo_p = 55.0
+  motor_velocity_servo_d = 1.2
+  effort_limit_n = 150.0
+
+
+7. RINGKASAN
+------------------------------------------------------------
+
+pendulum_pid_ws:
+- Homing: PD.
+- Swing-up: energy-based.
+- Balance: PID sudut + PD cart-centering.
+- Assist engsel: aktif default sebagai bantuan simulasi.
+- GUI lama tetap dipakai lewat /tmp/pendulum_pid_serial.

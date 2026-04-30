@@ -2,9 +2,9 @@
 
 Workspace ini dibuat sebagai versi baru yang lebih dekat ke Manual Book LIP01.
 Aktuator cart dibuat lebih mirip sistem asli dengan deadband PWM, konstanta waktu
-motor, batas travel 78 cm, dan batas gaya yang jauh lebih realistis. Untuk demo
-simulasi supaya bisa benar-benar tegak, bridge juga memakai assist torsi kecil
-pada engsel saat fase catch/balance.
+motor, batas travel 78 cm, dan batas gaya yang tidak dibiarkan sampai ratusan N.
+Untuk demo simulasi supaya bisa benar-benar tegak, bridge juga memakai assist
+torsi kecil pada engsel saat fase catch/balance.
 
 Data utama dari Manual Book yang dipakai:
 
@@ -100,7 +100,7 @@ target_energy = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
 phase = self.pendulum_vel_radps * math.cos(theta_top)
 energy_deficit = target_energy - energy
 
-force = -52.0 * self.swing_gain * energy_deficit * phase
+force = 52.0 * self.swing_gain * energy_deficit * phase
 force -= 34.0 * self.swing_centering_gain * self.cart_x_m
 force -= 14.0 * self.swing_damping_gain * self.cart_v_mps
 ```
@@ -118,15 +118,33 @@ return (
 )
 ```
 
-Default workspace ini dibuat lebih ketat agar balance baru aktif saat pendulum
-sudah lebih pelan di dekat posisi tegak:
+Default workspace ini dibuat lebih ketat agar swing-up memakai gaya lebih kecil,
+mengayun lebih banyak, dan balance baru aktif saat pendulum sudah lebih pelan di
+dekat posisi tegak:
 
 ```python
-self.declare_parameter("balance_capture_deg", 12.0)
-self.declare_parameter("balance_capture_rate_rad_s", 1.5)
-self.declare_parameter("balance_capture_cart_pos_m", 0.34)
-self.declare_parameter("balance_capture_cart_vel_mps", 3.0)
+self.declare_parameter("swing_gain", 2.70)
+self.declare_parameter("swing_kick_mps", 0.82)
+self.declare_parameter("swing_force_limit_n", 145.0)
+self.declare_parameter("swing_min_top_passes_before_catch", 3)
+self.declare_parameter("swing_min_energy_build_time_s", 5.0)
+self.declare_parameter("swing_energy_ready_ratio", 0.84)
+self.declare_parameter("swing_top_pass_angle_deg", 80.0)
+self.declare_parameter("balance_capture_deg", 9.0)
+self.declare_parameter("balance_capture_rate_rad_s", 1.0)
+self.declare_parameter("balance_capture_cart_pos_m", 0.30)
+self.declare_parameter("balance_capture_cart_vel_mps", 1.4)
+self.declare_parameter("catch_region_deg", 95.0)
+self.declare_parameter("catch_region_rate_rad_s", 14.0)
 ```
+
+Dengan nilai ini, workspace tidak langsung menangkap pendulum pada ayunan
+pertama. `SWING_UP` harus melewati area atas beberapa kali dan energinya harus
+mencapai rasio minimum sebelum `catch` atau `BALANCE` boleh aktif. Jika gerak
+pendulum sudah berada dekat atas dan tidak kembali melewati area bawah, gate
+waktu minimal `5.0 s` tetap mencegah balance terlalu dini tanpa mengunci swing-up
+selamanya. Jika tombol `A` ditekan saat swing-up belum siap, request balance
+disimpan dulu dan baru dijalankan saat syarat energi/capture terpenuhi.
 
 ### Balance full-state feedback
 
@@ -158,14 +176,30 @@ Nilai ini memberi damping sudut dan damping cart lebih kuat dibanding default
 awal, sementara centering dan integral posisi cart dibuat lebih kecil agar cart
 tidak terlalu agresif mengejar titik tengah saat proses catch/balance.
 
-Untuk demo simulasi yang lebih stabil, assist engsel hanya aktif dekat posisi
-tegak:
+Gaya cart sekarang dibatasi bertingkat supaya masih bisa dipertanggungjawabkan
+sebagai simulasi aktuator real:
 
 ```text
-balance_assist_angle_deg        = 35.0
-balance_assist_kp_nm_per_rad    = 4.5
-balance_assist_kd_nm_per_rad_s  = 3.2
-balance_assist_torque_limit_nm  = 6.0
+swing_force_limit_n  = 145.0
+catch_force_limit_n  = 95.0
+balance_force_limit_n = 45.0
+effort_limit_n       = 150.0
+```
+
+Kalau balance terlihat butuh gaya besar, penyebabnya biasanya balance masuk
+terlalu awal: sudut masih jauh dari tegak, theta-dot masih tinggi, cart sudah
+terlalu cepat, atau rail guard sedang menarik cart kembali dari ujung rel. Karena
+itu capture dibuat lebih ketat, bukan menaikkan force lagi.
+
+Untuk demo simulasi yang lebih stabil, assist engsel aktif saat pendulum sudah
+mulai naik ke area atas. Ini bantuan khusus simulasi, bukan aktuator tambahan
+pada alat asli:
+
+```text
+balance_assist_angle_deg        = 115.0
+balance_assist_kp_nm_per_rad    = 3.4
+balance_assist_kd_nm_per_rad_s  = 2.4
+balance_assist_torque_limit_nm  = 4.5
 ```
 
 ### Model motor manual
@@ -185,7 +219,9 @@ Parameter default:
 self.declare_parameter("motor_pwm_deadband", 3212.0)
 self.declare_parameter("motor_pwm_per_cmps", 189.1)
 self.declare_parameter("motor_time_constant_s", 0.40)
-self.declare_parameter("effort_limit_n", 60.0)
+self.declare_parameter("motor_velocity_servo_p", 55.0)
+self.declare_parameter("motor_velocity_servo_d", 1.2)
+self.declare_parameter("effort_limit_n", 150.0)
 ```
 
 ## Catatan
