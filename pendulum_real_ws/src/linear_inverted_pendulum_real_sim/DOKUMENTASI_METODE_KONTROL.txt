@@ -4,7 +4,8 @@ DOKUMENTASI METODE KONTROL - PENDULUM_REAL_WS
 Tujuan workspace ini:
 - Membuat simulasi ROS 2 + Gazebo yang lebih dekat ke Manual Book LIP01.
 - Tetap bisa dipakai oleh GUI Python lama lewat pseudo serial.
-- Tidak memakai bantuan torsi langsung di engsel pendulum.
+- Memakai assist torsi kecil di engsel khusus simulasi saat catch/balance.
+  Assist ini bukan aktuator tambahan pada alat asli.
 
 Lokasi workspace:
   /home/ammar/Documents/Pendulum/pendulum_real_ws

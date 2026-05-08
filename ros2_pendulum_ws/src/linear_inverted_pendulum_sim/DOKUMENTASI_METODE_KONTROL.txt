@@ -1,6 +1,13 @@
 DOKUMENTASI METODE KONTROL LINEAR INVERTED PENDULUM
 ====================================================
 
+Catatan:
+  Dokumen ini adalah catatan metode lama untuk workspace ros2. Untuk
+  dokumentasi keseluruhan yang mengikuti checkout aktif sekarang, gunakan
+  /home/ammar/Documents/Pendulum/DOKUMENTASI_METODE_DAN_DASAR_TEORI.md.
+  Pada checkout aktif, default ros2_pendulum_ws sudah memakai
+  balance_use_lqr=False dan LQR diposisikan sebagai jalur opsional/eksperimen.
+
 Dokumen ini menjelaskan metode yang dipakai pada simulasi ROS 2 Jazzy +
 Gazebo Harmonic di package:
 
@@ -19,7 +26,8 @@ Ringkasan penting:
   2. Swing-up membangun energi ayunan pendulum.
   3. Saat pendulum dekat atas dan state aman, sistem otomatis masuk BALANCE.
   4. Tombol A hanya manual override untuk memaksa BALANCE.
-  5. Balance utama memakai LQR force control pada cart.
+  5. Balance aktif pada checkout sekarang memakai force feedback/PID-like
+     upright controller; LQR masih ada sebagai opsi eksperimen.
   6. Simulasi sekarang memakai balance_assist, yaitu torsi kecil di engsel
      pendulum agar lebih mudah tegak. Ini bantuan simulasi, bukan hardware
      pendulum pasif murni.

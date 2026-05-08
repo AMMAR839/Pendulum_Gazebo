@@ -36,6 +36,8 @@ File penting di root:
 - `lib_stick.py`: joystick sender jika joystick fisik dipakai.
 - `lib_gui.py`: tampilan GUI.
 - `data_exports/`: data CSV dan helper capture runtime.
+- `DOKUMENTASI_METODE_DAN_DASAR_TEORI.md`: dokumen laporan yang menjelaskan
+  dasar teori, metode kontrol, dan perbandingan semua workspace.
 
 Pseudo serial dibuat otomatis oleh node bridge. Dari sisi `main.py`, simulasi
 terlihat seperti hardware STM32 karena format packet tetap sama.
@@ -127,18 +129,20 @@ Sistem kontrol:
 
 - Homing: PD sederhana untuk membawa cart ke tengah.
 - Swing-up: energy-based swing-up.
-- Balance: default `balance_use_lqr=True`, jadi jalur balance utamanya LQR /
-  state feedback.
+- Balance pada checkout aktif memakai force feedback/PID-like upright
+  controller karena default `balance_use_lqr=False`.
+- Parameter dan fungsi LQR masih tersedia sebagai jalur opsional/eksperimen
+  jika `balance_use_lqr` diaktifkan.
 - Ada assist engsel kecil untuk membantu simulasi.
-- Force limit lebih besar (`balance_force_limit_n` dan `effort_limit_n` tinggi)
-  supaya demo lebih mudah bergerak.
+- Tuning sekarang lebih dekat ke real-style dibanding README awal, dengan
+  force limit lebih rendah daripada konfigurasi demo lama.
 
 Kapan dipakai:
 
 - Untuk demo awal.
 - Untuk melihat alur serial, topic, dan GUI tanpa terlalu ketat mengikuti
   karakter motor real.
-- Untuk eksperimen LQR atau controller yang lebih bebas.
+- Untuk eksperimen LQR opsional atau controller yang lebih bebas.
 
 ### 2. `pendulum_real_ws`
 
@@ -243,7 +247,7 @@ Kapan dipakai:
 | Launch | `sim.launch.py` | `real_sim.launch.py` | `pid_sim.launch.py` |
 | Homing | PD | PD | PD |
 | Swing-up | Energy-based | Energy-based dengan readiness gate | Energy-based dengan readiness gate |
-| Balance | LQR/state feedback default | Full-state feedback Manual-style | PID sudut + PD cart |
+| Balance | Force feedback/PID-like aktif, LQR opsional | Full-state feedback Manual-style | PID sudut + PD cart |
 | Motor model | Lebih demo-oriented | Deadband PWM + time constant | Deadband PWM + time constant |
 | Force limit | Lebih besar | Lebih rendah/real-style | Lebih rendah/real-style |
 | Assist engsel | Ada | Ada, untuk stabilitas simulasi | Ada, untuk stabilitas simulasi |

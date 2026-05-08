@@ -107,12 +107,12 @@ capture balance. Kalau mode balance dipaksa terlalu awal dengan tombol `A`,
 controller langsung bekerja pada kondisi yang belum bisa ditahan, lalu jatuh
 dan otomatis kembali ke `SWING UP` saat sudut sudah melewati batas fallback.
 
-Untuk membuat simulasi lebih mudah tegak, default sekarang dibuat lebih
-permisif: area capture diperlebar, batas gaya diperbesar, LQR catch masuk lebih
-awal, mode `BALANCE` default memakai LQR force controller, dan ada torsi kecil
-`balance_assist` di engsel saat pendulum sudah dekat tegak. Gain GUI tetap
-diterima dari `main.py`, tetapi bukan controller utama selama
-`balance_use_lqr=True`.
+Pada checkout aktif sekarang, workspace ini sudah dituning lebih dekat ke gaya
+real-style: force limit dibuat lebih rendah, capture dibuat lebih ketat, dan
+mode `BALANCE` default memakai force feedback/PID-like upright controller karena
+`balance_use_lqr=False`. Parameter dan fungsi LQR masih ada di bridge sebagai
+jalur opsional/eksperimen jika `balance_use_lqr` diaktifkan. Gain GUI tetap
+diterima dari `main.py` dan ikut membentuk controller upright aktif.
 
 Memperbesar radius visual batang tidak banyak membantu di Gazebo karena tidak
 ada model aerodinamika. Kalau ingin membuat simulasi lebih mudah secara fisik,
@@ -124,21 +124,21 @@ simulasi. Kalau ingin kembali ke model pendulum pasif, set
 Parameter tuning utama ada di `sim_serial_bridge.py`:
 
 ```python
-self.declare_parameter("balance_capture_deg", 26.0)
-self.declare_parameter("balance_capture_rate_rad_s", 3.5)
-self.declare_parameter("balance_capture_cart_pos_m", 0.24)
-self.declare_parameter("balance_capture_cart_vel_mps", 1.30)
-self.declare_parameter("lqr_catch_deg", 130.0)
-self.declare_parameter("lqr_catch_rate_rad_s", 25.0)
-self.declare_parameter("catch_force_limit_n", 280.0)
-self.declare_parameter("balance_force_limit_n", 340.0)
-self.declare_parameter("balance_use_lqr", True)
+self.declare_parameter("balance_capture_deg", 9.0)
+self.declare_parameter("balance_capture_rate_rad_s", 1.0)
+self.declare_parameter("balance_capture_cart_pos_m", 0.30)
+self.declare_parameter("balance_capture_cart_vel_mps", 1.4)
+self.declare_parameter("catch_region_deg", 95.0)
+self.declare_parameter("catch_region_rate_rad_s", 14.0)
+self.declare_parameter("catch_force_limit_n", 95.0)
+self.declare_parameter("balance_force_limit_n", 45.0)
+self.declare_parameter("balance_use_lqr", False)
 self.declare_parameter("balance_assist_enabled", True)
-self.declare_parameter("balance_assist_angle_deg", 55.0)
-self.declare_parameter("balance_assist_kp_nm_per_rad", 1.8)
-self.declare_parameter("balance_assist_kd_nm_per_rad_s", 0.38)
-self.declare_parameter("balance_assist_torque_limit_nm", 2.4)
-self.declare_parameter("effort_limit_n", 360.0)
+self.declare_parameter("balance_assist_angle_deg", 115.0)
+self.declare_parameter("balance_assist_kp_nm_per_rad", 3.4)
+self.declare_parameter("balance_assist_kd_nm_per_rad_s", 2.4)
+self.declare_parameter("balance_assist_torque_limit_nm", 4.5)
+self.declare_parameter("effort_limit_n", 150.0)
 ```
 
 ## Metode kontrol yang digunakan
@@ -205,43 +205,26 @@ if abs(theta_deg) > 160.0 and abs(self.pendulum_vel_radps) < 0.60:
     force += kick_direction * max(35.0, 70.0 * self.swing_kick_mps)
 ```
 
-### 3. LQR catch dekat posisi atas
+### 3. Catch region dekat posisi atas
 
-Sebelum masuk balance, controller memakai LQR catch untuk mengurangi kecepatan
-ayunan dan membawa state masuk ke capture window:
+Sebelum masuk balance, controller memakai catch region untuk mengurangi
+kecepatan ayunan dan membawa state masuk ke capture window. Pada default aktif
+sekarang, catch memakai upright force feedback yang sama dengan balance, tetapi
+dengan limit `catch_force_limit_n`.
 
 ```python
-if self._in_lqr_catch_region_locked(theta_top):
-    force = self._state_feedback_force_locked(
-        self.catch_lqr_gain,
-        theta_top,
-        dt,
-        self.catch_force_limit_n,
-    )
+if self._in_catch_region_locked(theta_top):
+    force = self._catch_force_locked(theta_top, dt)
     return self._force_to_command_hint(force), force
 ```
 
-Gain LQR dihitung dari model linear inverted pendulum:
+Fungsi catch region mengecek sudut, kecepatan sudut, dan posisi cart:
 
 ```python
-q_matrix = np.diag([q_x, q_x_dot, q_theta, q_theta_dot])
-r_matrix = np.array([[max(r_value, 1e-4)]], dtype=float)
-p_matrix = solve_continuous_are(a_matrix, b_matrix, q_matrix, r_matrix)
-k_matrix = np.linalg.inv(r_matrix) @ b_matrix.T @ p_matrix
-```
-
-Force LQR menggunakan state `[x, x_dot, theta, theta_dot]`:
-
-```python
-state = (
-    x_error_m,
-    self.cart_v_mps,
-    theta_top,
-    self.pendulum_vel_radps,
-)
-force = -sum(
-    gain_value * state_value
-    for gain_value, state_value in zip(gain, state)
+return (
+    abs(theta_top) < self.catch_region_angle
+    and abs(self.pendulum_vel_radps) < self.catch_region_rate
+    and abs(self.cart_x_m) < (self.rail_limit - 0.004)
 )
 ```
 
@@ -264,41 +247,33 @@ def _ready_for_balance_locked(self, theta_top):
     )
 ```
 
-### 5. Balance LQR
+### 5. Balance force feedback aktif
 
-Saat mode `BALANCE`, controller default sekarang memakai LQR yang sama dengan
-state feedback `[x, x_dot, theta, theta_dot]`. Saat mode balance dimasuki,
-`x_center_m` diset ke posisi cart saat itu dulu, lalu perlahan dikembalikan ke
-tengah agar cart tidak langsung ditarik kasar.
+Saat mode `BALANCE`, controller default pada checkout aktif memakai upright
+force feedback/PID-like controller. Saat mode balance dimasuki, `x_center_m`
+diset ke posisi cart saat itu dulu, lalu perlahan dikembalikan ke tengah agar
+cart tidak langsung ditarik kasar.
 
 ```python
-if self.balance_use_lqr:
-    force = self._state_feedback_force_locked(
-        self.balance_lqr_gain,
-        theta_top,
-        dt,
-        self.balance_force_limit_n,
-    )
-else:
-    force = self._gui_force_feedback_locked(
-        theta_top,
-        dt,
-        self.balance_force_limit_n,
-    )
+force = self._balance_force_locked(theta_top, dt)
+return self._force_to_command_hint(force), force
 ```
 
-Feedback gain GUI masih ada sebagai fallback bila `balance_use_lqr` dibuat
-`False`. Bentuknya mirip PD untuk sudut dan PD+I untuk posisi cart:
+Bentuknya memakai P/D sudut pendulum, P/D posisi cart, dan integral kecil posisi
+cart:
 
 ```python
 force = (
-    14.0 * self.gains["K_TH"] * theta_top
-    + 35.0 * self.gains["K_TH_D"] * self.pendulum_vel_radps
-    - 20.0 * self.gains["K_X"] * x_error_m
-    - 8.0 * self.gains["K_X_D"] * self.cart_v_mps
-    - 12.0 * self.gains["K_X_INT"] * self.x_integral_cm_s
+    -theta_force_gain * theta_top
+    -theta_rate_force_gain * self.pendulum_vel_radps
+    -center_scale * centering_force_gain * x_error_m
+    -center_scale * cart_damping_force_gain * self.cart_v_mps
+    -integral_force_gain * self.x_integral_cm_s
 )
 ```
+
+LQR masih tersedia sebagai jalur eksperimen lewat parameter `balance_use_lqr`,
+tetapi bukan default aktif saat ini.
 
 ### 6. PID velocity servo untuk aktuasi cart
 
@@ -323,7 +298,7 @@ effort = (
 )
 ```
 
-Untuk `SWING_UP`, `LQR catch`, dan `BALANCE`, kode biasanya memberi
+Untuk `SWING_UP`, catch, dan `BALANCE`, kode biasanya memberi
 `effort_override`, sehingga gaya langsung dikirim ke Gazebo melalui
 `/pendulum/cart_force_cmd`.
 
