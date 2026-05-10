@@ -164,6 +164,43 @@ perintah effort joint cart di Gazebo. Nilai ini boleh dipakai untuk membandingka
 workspace simulasi, tetapi jangan ditulis sebagai gaya motor fisik alat asli
 tanpa kalibrasi motor/driver/sensor gaya.
 
+## Swing-up lebih halus
+
+Proses swing-up memang memakai teori energy-based swing-up: controller membaca
+energi pendulum, membandingkannya dengan energi target posisi tegak, lalu
+memberi dorongan cart searah fase ayunan. Bagian ini benar secara teori.
+
+Yang sebelumnya membuat gerak terlihat kurang smooth adalah implementasi
+simulasi, bukan rumus energinya:
+
+- ada minimum pump force yang langsung memberi dorongan besar,
+- kick awal dari posisi bawah terlalu keras,
+- force swing-up bisa melompat langsung ke batas `90 N` atau `145 N`,
+- effort langsung dikirim ke joint Gazebo, sehingga tidak selalu terlihat
+  seperti respons motor real yang bertahap.
+
+Perbaikan yang dipakai sekarang:
+
+- `swing_min_pump_force_n`: minimum pump force dasar dibuat lebih kecil.
+- `swing_min_pump_force_extra_n`: tambahan minimum pump force dibuat gradual
+  mengikuti energy deficit.
+- `swing_kick_force_n`: kick awal dibuat lebih rendah.
+- `swing_force_rate_limit_nps`: force swing-up diberi rate limit agar command
+  naik/turun bertahap, bukan loncat mendadak.
+
+Validasi headless bersih setelah tuning hardware-logical:
+
+| Workspace | First BALANCE | Phase terakhir | Swing force min/max | Swing force abs mean | Balance force abs mean |
+| --- | ---: | --- | ---: | ---: | ---: |
+| `ros2_pendulum_ws` | `5.854 s` | `BALANCE` | `-28.236..60.052 N` | `7.841 N` | `0.488 N` |
+| `pendulum_real_ws` | `4.948 s` | `BALANCE` | `-65.000..32.697 N` | `11.094 N` | `0.248 N` |
+| `pendulum_pid_ws` | `4.880 s` | `BALANCE` | `-65.000..35.456 N` | `9.863 N` | `0.391 N` |
+
+Ringkasan CSV:
+
+- `data_exports/hardware_logical_swing_validation_summary_20260510.csv`
+- `data_exports/hardware_logical_swing_real_reference_summary_20260510.csv`
+
 Jika ada Gazebo lama yang masih aktif dan window menjadi bentrok, hentikan dulu:
 
 ```bash

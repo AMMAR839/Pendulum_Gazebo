@@ -66,8 +66,16 @@ Jalankan:
 ```bash
 cd /home/ammar/Documents/Pendulum
 python3 data_exports/build_swing_up_real_reference.py \
-  --samples data_exports/post_visual_balance_validation_20260510.csv \
-  --output data_exports/swing_up_real_reference_summary_20260510.csv
+  --samples data_exports/hardware_logical_swing_validation_20260510.csv \
+  --output data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
+```
+
+Jika ingin melihat validasi setelah command swing-up dibuat lebih konservatif
+untuk hardware, pakai:
+
+```text
+data_exports/hardware_logical_swing_validation_summary_20260510.csv
+data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
 ```
 
 Dokumen ringkas untuk laporan ada di:

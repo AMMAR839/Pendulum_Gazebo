@@ -663,12 +663,12 @@ lintasan. Karena itu bridge memakai dua pelindung:
 | rail guard | Mengurangi atau membalik command jika cart mendekati ujung rail. |
 | force limit | Membatasi gaya maksimum agar tidak terlalu ideal. |
 
-Contoh batas gaya real-style:
+Contoh batas gaya real-style terbaru setelah tuning hardware-logical:
 
 ```text
-swing_force_limit_n   = 145 N
-catch_force_limit_n   = 95 N
-balance_force_limit_n = 45 N
+swing_force_limit_n   = 70 N
+catch_force_limit_n   = 65 N
+balance_force_limit_n = 60 N
 effort_limit_n        = 150 N
 ```
 
@@ -975,30 +975,32 @@ gaya motor fisik. Dasarnya adalah:
    posisi cart, kecepatan cart, PWM atau arus motor, dan keberhasilan masuk
    balance.
 
-Setelah model visual baru, ringkasan patokan swing-up dibuat di:
+Setelah tuning hardware-logical swing-up, ringkasan patokan swing-up dibuat di:
 
 ```text
-data_exports/swing_up_real_reference_summary_20260510.csv
+data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
 ```
 
 Ringkasan utama:
 
 | Workspace | Durasi swing-up | Mean abs effort | P95/peak effort | Abs impulse | Positive cmd-work | Energy ready ratio | Patokan command real |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `ros2_pendulum_ws` | 8.194 s | 56.617 N | 90.000 / 92.084 N | 466.727 N.s | 102.424 J | 0.992 | 25.481 / 86.748 / 126.000 cm/s |
-| `pendulum_real_ws` | 8.126 s | 83.011 N | 145.000 / 145.000 N | 692.949 N.s | 124.536 J | 0.993 | 23.774 / 59.950 / 203.000 cm/s; PWM mean/P95 7686 / 14549 |
-| `pendulum_pid_ws` | 8.465 s | 84.991 N | 145.000 / 145.000 N | 722.098 N.s | 136.866 J | 0.994 | 25.032 / 62.467 / 203.000 cm/s; PWM mean/P95 7906 / 15024 |
+| `ros2_pendulum_ws` | 5.529 s | 7.841 N | 26.663 / 60.052 N | 43.214 N.s | 8.608 J | 0.991 | 9.856 / 32.237 / 57.491 cm/s |
+| `pendulum_real_ws` | 4.625 s | 11.094 N | 30.835 / 65.000 N | 52.264 N.s | 11.328 J | 0.993 | 12.490 / 35.599 / 75.969 cm/s; PWM mean/P95 5359 / 9944 |
+| `pendulum_pid_ws` | 4.562 s | 9.863 N | 36.352 / 65.000 N | 44.770 N.s | 10.786 J | 0.991 | 11.328 / 32.950 / 57.962 cm/s; PWM mean/P95 5210 / 9443 |
 
 Interpretasi:
 
 1. `energy_ready_ratio` sekitar `0.99` menunjukkan swing-up berhasil
    mengumpulkan energi sampai hampir sama dengan energi posisi tegak.
 2. `pendulum_real_ws` dan `pendulum_pid_ws` menjadi patokan real-style utama
-   karena memakai force limit `+/-145 N`, model deadband PWM, dan time constant
-   motor.
+   karena memakai model deadband PWM dan time constant motor.
 3. `ros2_pendulum_ws` tetap berguna sebagai pembanding simulasi, tetapi patokan
    real yang lebih kuat adalah workspace real-style.
-4. Angka N tetap disebut effort cart model Gazebo. Untuk mengubahnya menjadi
+4. Limit swing-up/catch terbaru dibuat lebih konservatif, yaitu sekitar
+   `+/-70 N` untuk swing-up dan `+/-65 N` untuk catch, sehingga angka peak lebih
+   mudah dibandingkan dengan kemampuan actuator kecil.
+5. Angka N tetap disebut effort cart model Gazebo. Untuk mengubahnya menjadi
    gaya motor aktual, perlu kalibrasi actuator atau sensor gaya/arus pada alat
    asli.
 
@@ -1007,11 +1009,13 @@ Kalimat laporan yang aman:
 ```text
 Gaya swing-up digunakan sebagai patokan awal actuator real melalui envelope
 hasil simulasi. Controller berbasis energi menaikkan energi pendulum hingga
-sekitar 99% energi referensi posisi tegak, dengan batas effort cart model
-sebesar +/-90 N pada ros2_pendulum_ws dan +/-145 N pada pendulum_real_ws serta
-pendulum_pid_ws. Karena belum digunakan sensor gaya motor fisik, nilai force
-Gazebo tidak diklaim sebagai gaya motor aktual, tetapi digunakan sebagai
-referensi command envelope yang harus divalidasi terhadap log alat asli.
+sekitar 99% energi referensi posisi tegak. Setelah tuning hardware-logical, run
+headless terbaru memiliki rata-rata effort swing-up sekitar 7.8 N sampai 11.1 N
+dengan peak sekitar 60 N sampai 65 N, sehingga proses ayunan lebih mudah
+dibandingkan dengan kemampuan actuator kecil. Karena belum digunakan sensor gaya
+motor fisik, nilai force Gazebo tidak diklaim sebagai gaya motor aktual, tetapi
+digunakan sebagai referensi command envelope yang harus divalidasi terhadap log
+alat asli.
 ```
 
 ## 18. Hal yang Harus Dijelaskan di Laporan

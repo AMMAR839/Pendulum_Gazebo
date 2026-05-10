@@ -1,67 +1,26 @@
-[INFO] [launch]: All log files can be found below /home/ammar/.ros/log/2026-05-10-08-50-43-687179-ammar-Swift-SF314-43-140149
+[INFO] [launch]: All log files can be found below /home/ammar/.ros/log/2026-05-10-12-06-39-857480-ammar-Swift-SF314-43-165444
 [INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [launch.user]: Gazebo Transport partition: pendulum_140149
-[INFO] [gazebo-1]: process started with pid [140207]
-[INFO] [robot_state_publisher-2]: process started with pid [140208]
-[INFO] [create-3]: process started with pid [140209]
-[INFO] [parameter_bridge-4]: process started with pid [140210]
-[INFO] [pid_serial_bridge-5]: process started with pid [140212]
-[robot_state_publisher-2] [INFO] [1778377844.122893428] [robot_state_publisher]: Robot initialized
-[create-3] [INFO] [1778377844.130415282] [ros_gz_sim]: Requesting list of world names.
-[parameter_bridge-4] [INFO] [1778377844.153106864] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
-[parameter_bridge-4] [INFO] [1778377844.154541938] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/empty/model/linear_inverted_pendulum/joint_state (gz.msgs.Model) -> /world/empty/model/linear_inverted_pendulum/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
-[parameter_bridge-4] [INFO] [1778377844.157919346] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/linear_inverted_pendulum/joint/cart_slider/cmd_force (std_msgs/msg/Float64) -> /model/linear_inverted_pendulum/joint/cart_slider/cmd_force (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-4] [INFO] [1778377844.159163656] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force (std_msgs/msg/Float64) -> /model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force (gz.msgs.Double)] (Lazy 0)
-[create-3] [INFO] [1778377844.619952500] [ros_gz_sim]: Waiting messages on topic [robot_description].
-[create-3] [INFO] [1778377844.632754380] [ros_gz_sim]: Entity creation successful.
-[pid_serial_bridge-5] [INFO] [1778377844.645114205] [pendulum_pid_serial_bridge]: Pseudo serial ready at /tmp/pendulum_pid_dashboard_serial. Run the GUI with PENDULUM_PORT pointing there.
-[pid_serial_bridge-5] [INFO] [1778377844.646173391] [pendulum_pid_serial_bridge]: Manual-book motor model: deadband=3212 PWM, slope=189.1 PWM/(cm/s), tau=0.40s
-[pid_serial_bridge-5] [INFO] [1778377844.647191227] [pendulum_pid_serial_bridge]: Real-like force caps: swing=145.0 N, catch=95.0 N, balance=45.0 N, absolute=150.0 N
-[pid_serial_bridge-5] [INFO] [1778377844.648375552] [pendulum_pid_serial_bridge]: PID balance controller active: theta P/I/D plus cart-centering PD.
-[INFO] [create-3]: process has finished cleanly [pid 140209]
+[INFO] [launch.user]: Gazebo Transport partition: pendulum_165444
+[INFO] [gazebo-1]: process started with pid [165520]
+[INFO] [robot_state_publisher-2]: process started with pid [165521]
+[INFO] [create-3]: process started with pid [165522]
+[INFO] [parameter_bridge-4]: process started with pid [165524]
+[INFO] [pid_serial_bridge-5]: process started with pid [165525]
+[robot_state_publisher-2] [INFO] [1778389600.308217229] [robot_state_publisher]: Robot initialized
+[create-3] [INFO] [1778389600.317925547] [ros_gz_sim]: Requesting list of world names.
+[parameter_bridge-4] [INFO] [1778389600.344841882] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1778389600.346484681] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/empty/model/linear_inverted_pendulum/joint_state (gz.msgs.Model) -> /world/empty/model/linear_inverted_pendulum/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1778389600.350064468] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/linear_inverted_pendulum/joint/cart_slider/cmd_force (std_msgs/msg/Float64) -> /model/linear_inverted_pendulum/joint/cart_slider/cmd_force (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1778389600.351542502] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force (std_msgs/msg/Float64) -> /model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force (gz.msgs.Double)] (Lazy 0)
+[pid_serial_bridge-5] [INFO] [1778389600.844698313] [pendulum_pid_serial_bridge]: Pseudo serial ready at /tmp/pendulum_pid_dashboard_serial. Run the GUI with PENDULUM_PORT pointing there.
+[pid_serial_bridge-5] [INFO] [1778389600.846222765] [pendulum_pid_serial_bridge]: Manual-book motor model: deadband=3212 PWM, slope=189.1 PWM/(cm/s), tau=0.40s
+[pid_serial_bridge-5] [INFO] [1778389600.847624625] [pendulum_pid_serial_bridge]: Real-like force caps: swing=145.0 N, catch=95.0 N, balance=60.0 N, absolute=150.0 N
+[pid_serial_bridge-5] [INFO] [1778389600.850067988] [pendulum_pid_serial_bridge]: PID balance controller active: theta P/I/D plus cart-centering PD.
+[create-3] [INFO] [1778389600.962157676] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1778389601.073667890] [ros_gz_sim]: Entity creation successful.
+[INFO] [create-3]: process has finished cleanly [pid 165522]
 [gazebo-1] [1;33mWarning [parser_urdf.cc:1220][0m Attribute value string not set
 [gazebo-1] [1;33mWarning [parser_urdf.cc:1220][0m Attribute value string not set
 [gazebo-1] [1;33mWarning [parser_urdf.cc:1220][0m Attribute value string not set
-[parameter_bridge-4] [INFO] [1778377846.332485760] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
-[pid_serial_bridge-5] [INFO] [1778377846.435717230] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377858.708889205] [pendulum_pid_serial_bridge]: External disturbance set: force=0.500 N, torque=0.200 Nm
-[pid_serial_bridge-5] [INFO] [1778377858.908002673] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377860.952613703] [pendulum_pid_serial_bridge]: External disturbance set: force=1.000 N, torque=0.400 Nm
-[pid_serial_bridge-5] [INFO] [1778377861.167786554] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377863.214031714] [pendulum_pid_serial_bridge]: External disturbance set: force=1.500 N, torque=0.600 Nm
-[pid_serial_bridge-5] [INFO] [1778377863.434284147] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377865.824991067] [pendulum_pid_serial_bridge]: External disturbance set: force=2.000 N, torque=0.800 Nm
-[pid_serial_bridge-5] [INFO] [1778377866.041537315] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377868.653528011] [pendulum_pid_serial_bridge]: External disturbance set: force=2.500 N, torque=1.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377868.871163259] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377871.634837154] [pendulum_pid_serial_bridge]: External disturbance set: force=3.000 N, torque=1.200 Nm
-[pid_serial_bridge-5] [INFO] [1778377871.844217327] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377874.753058230] [pendulum_pid_serial_bridge]: External disturbance set: force=4.000 N, torque=1.600 Nm
-[pid_serial_bridge-5] [INFO] [1778377874.957828519] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377878.093621343] [pendulum_pid_serial_bridge]: External disturbance set: force=5.000 N, torque=2.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377878.303982133] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377881.571912486] [pendulum_pid_serial_bridge]: External disturbance set: force=6.000 N, torque=2.400 Nm
-[pid_serial_bridge-5] [INFO] [1778377881.778454104] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377885.258722431] [pendulum_pid_serial_bridge]: External disturbance set: force=8.000 N, torque=3.200 Nm
-[pid_serial_bridge-5] [INFO] [1778377885.463804643] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377889.355510766] [pendulum_pid_serial_bridge]: External disturbance set: force=-0.500 N, torque=-0.200 Nm
-[pid_serial_bridge-5] [INFO] [1778377889.572648816] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377891.622186722] [pendulum_pid_serial_bridge]: External disturbance set: force=-1.000 N, torque=-0.400 Nm
-[pid_serial_bridge-5] [INFO] [1778377891.822552936] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377893.875570827] [pendulum_pid_serial_bridge]: External disturbance set: force=-1.500 N, torque=-0.600 Nm
-[pid_serial_bridge-5] [INFO] [1778377894.074009259] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377896.457065531] [pendulum_pid_serial_bridge]: External disturbance set: force=-2.000 N, torque=-0.800 Nm
-[pid_serial_bridge-5] [INFO] [1778377896.679200542] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377899.290167349] [pendulum_pid_serial_bridge]: External disturbance set: force=-2.500 N, torque=-1.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377899.503532878] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377902.291980496] [pendulum_pid_serial_bridge]: External disturbance set: force=-3.000 N, torque=-1.200 Nm
-[pid_serial_bridge-5] [INFO] [1778377902.503401948] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377905.429297523] [pendulum_pid_serial_bridge]: External disturbance set: force=-4.000 N, torque=-1.600 Nm
-[pid_serial_bridge-5] [INFO] [1778377905.635910624] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377908.747083679] [pendulum_pid_serial_bridge]: External disturbance set: force=-5.000 N, torque=-2.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377908.948077951] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377912.214483927] [pendulum_pid_serial_bridge]: External disturbance set: force=-6.000 N, torque=-2.400 Nm
-[pid_serial_bridge-5] [INFO] [1778377912.431468210] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377915.921720887] [pendulum_pid_serial_bridge]: External disturbance set: force=-8.000 N, torque=-3.200 Nm
-[pid_serial_bridge-5] [INFO] [1778377916.158732786] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
-[pid_serial_bridge-5] [INFO] [1778377916.187869152] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm
+[parameter_bridge-4] [INFO] [1778389602.559990802] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[pid_serial_bridge-5] [INFO] [1778389602.682189176] [pendulum_pid_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm

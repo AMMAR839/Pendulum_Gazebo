@@ -73,11 +73,15 @@ class SimSerialBridge(Node):
         self.declare_parameter("pendulum_com_m", 0.20)
         self.declare_parameter("pendulum_length_m", 0.40)
         self.declare_parameter("external_force_visual_hold_s", 0.65)
-        self.declare_parameter("swing_gain", 2.70)
+        self.declare_parameter("swing_gain", 2.30)
         self.declare_parameter("swing_centering_gain", 0.42)
         self.declare_parameter("swing_damping_gain", 0.12)
         self.declare_parameter("swing_kick_mps", 0.82)
-        self.declare_parameter("swing_force_limit_n", 145.0)
+        self.declare_parameter("swing_kick_force_n", 24.0)
+        self.declare_parameter("swing_min_pump_force_n", 6.0)
+        self.declare_parameter("swing_min_pump_force_extra_n", 12.0)
+        self.declare_parameter("swing_force_rate_limit_nps", 220.0)
+        self.declare_parameter("swing_force_limit_n", 70.0)
         self.declare_parameter("swing_min_top_passes_before_catch", 1)
         self.declare_parameter("swing_min_energy_build_time_s", 2.5)
         self.declare_parameter("swing_energy_ready_ratio", 0.72)
@@ -99,7 +103,7 @@ class SimSerialBridge(Node):
         self.declare_parameter("balance_auto_lock_time_s", 0.0)
         self.declare_parameter("catch_region_deg", 95.0)
         self.declare_parameter("catch_region_rate_rad_s", 14.0)
-        self.declare_parameter("catch_force_limit_n", 95.0)
+        self.declare_parameter("catch_force_limit_n", 65.0)
         self.declare_parameter("balance_force_limit_n", 60.0)
         self.declare_parameter("balance_use_lqr", False)
         self.declare_parameter("balance_assist_enabled", True)
@@ -162,6 +166,18 @@ class SimSerialBridge(Node):
             self.get_parameter("swing_damping_gain").value
         )
         self.swing_kick_mps = float(self.get_parameter("swing_kick_mps").value)
+        self.swing_kick_force_n = float(
+            self.get_parameter("swing_kick_force_n").value
+        )
+        self.swing_min_pump_force_n = float(
+            self.get_parameter("swing_min_pump_force_n").value
+        )
+        self.swing_min_pump_force_extra_n = float(
+            self.get_parameter("swing_min_pump_force_extra_n").value
+        )
+        self.swing_force_rate_limit_nps = float(
+            self.get_parameter("swing_force_rate_limit_nps").value
+        )
         self.swing_force_limit_n = float(
             self.get_parameter("swing_force_limit_n").value
         )
@@ -335,6 +351,7 @@ class SimSerialBridge(Node):
         self.pendulum_vel_radps = 0.0
         self.manual_cmd_mps = 0.0
         self.cmd_mps = 0.0
+        self.swing_force_cmd_n = 0.0
         self.x_center_m = 0.0
         self.x_integral_cm_s = 0.0
         self.mode = MODE_WAITING
@@ -407,6 +424,7 @@ class SimSerialBridge(Node):
 
         centering_force = self._swing_centering_force_locked(theta_top)
         if centering_force is not None:
+            centering_force = self._smooth_swing_force_locked(centering_force, dt)
             return self._force_to_command_hint(centering_force), centering_force
 
         if self._upright_immediate_capture_ready_locked(theta_top) or (
@@ -458,10 +476,13 @@ class SimSerialBridge(Node):
 
         if energy_deficit > 0.04 and abs(phase) > 0.05:
             pump_direction = math.copysign(1.0, phase)
-            min_force = 18.0 + 32.0 * clamp(
-                energy_deficit / max(target_energy, 1e-6),
-                0.0,
-                1.0,
+            min_force = self.swing_min_pump_force_n + (
+                self.swing_min_pump_force_extra_n
+                * clamp(
+                    energy_deficit / max(target_energy, 1e-6),
+                    0.0,
+                    1.0,
+                )
             )
             if abs(force) < min_force:
                 force = pump_direction * min_force
@@ -474,12 +495,13 @@ class SimSerialBridge(Node):
             else:
                 elapsed = time.monotonic() - self.swing_state_started
                 kick_direction = 1.0 if int(elapsed / 0.45) % 2 == 0 else -1.0
-            force += kick_direction * max(35.0, 70.0 * self.swing_kick_mps)
+            force += kick_direction * self.swing_kick_force_n
 
         # Jangan terus mendorong keluar saat cart sudah dekat limit rel.
         force = self._rail_aware_swing_force_locked(force)
 
         force = clamp(force, -self.swing_force_limit_n, self.swing_force_limit_n)
+        force = self._smooth_swing_force_locked(force, dt)
         return self._force_to_command_hint(force), force
 
     def destroy_node(self):
@@ -713,6 +735,7 @@ class SimSerialBridge(Node):
             self.last_buttons = 0
             self.x_center_m = 0.0
             self.x_integral_cm_s = 0.0
+            self.swing_force_cmd_n = 0.0
             self.balance_request_pending = False
         self._write_reset_ack(1)
 
@@ -723,6 +746,7 @@ class SimSerialBridge(Node):
         self.prev_velocity_error = 0.0
         self.prev_motor_velocity_error = 0.0
         self.x_integral_cm_s = 0.0
+        self.swing_force_cmd_n = 0.0
 
         if mode == MODE_SWING_UP:
             self.x_center_m = 0.0
@@ -977,6 +1001,16 @@ class SimSerialBridge(Node):
 
         force = -70.0 * self.cart_x_m - 18.0 * self.cart_v_mps
         return clamp(force, -self.swing_force_limit_n, self.swing_force_limit_n)
+
+    def _smooth_swing_force_locked(self, force, dt):
+        max_delta = max(1.0, self.swing_force_rate_limit_nps) * max(dt, 1e-3)
+        force = clamp(
+            force,
+            self.swing_force_cmd_n - max_delta,
+            self.swing_force_cmd_n + max_delta,
+        )
+        self.swing_force_cmd_n = force
+        return force
 
     def _rail_aware_swing_force_locked(self, force):
         soft_limit = max(0.08, self.rail_limit - 0.08)

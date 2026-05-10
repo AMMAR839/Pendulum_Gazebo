@@ -1,0 +1,7 @@
+workspace,phase,samples,duration_s,degree_abs_mean_deg,sim_joint_effort_min_n,sim_joint_effort_max_n,sim_joint_effort_abs_mean_n,motor_command_abs_mean_cm_s,setspeed_abs_mean_cm_s,real_ws_pwm_equiv_abs_mean,hinge_assist_abs_mean_nm,interpretation,notes
+pid_hardware_logical,BALANCE,462,23.632000,0.395869,-35.460684,20.000000,0.390716,0.376642,0.399761,,0.023750,sim_joint_effort_only_not_real_motor_force,manual_A_near_upright
+pid_hardware_logical,SWING_UP,90,4.562000,116.674887,-65.000000,35.455682,9.863374,11.328020,11.267489,,0.374478,sim_joint_effort_only_not_real_motor_force,auto_capture;manual_A_near_upright
+real_hardware_logical,BALANCE,461,23.580000,0.354067,-8.968698,20.000000,0.247504,0.338318,0.340575,,0.010055,sim_joint_effort_only_not_real_motor_force,manual_A_near_upright
+real_hardware_logical,SWING_UP,91,4.625000,114.372761,-65.000000,32.697126,11.094048,12.489629,12.460705,,0.462862,sim_joint_effort_only_not_real_motor_force,auto_capture;manual_A_near_upright
+ros2_hardware_logical,BALANCE,442,22.626000,0.420060,-20.000000,34.700608,0.488291,0.467233,0.488526,,0.022422,sim_joint_effort_only_not_real_motor_force,manual_A_near_upright
+ros2_hardware_logical,SWING_UP,109,5.529000,125.688550,-28.236391,60.051768,7.840971,9.856032,9.748404,,0.280536,sim_joint_effort_only_not_real_motor_force,auto_capture;manual_A_near_upright

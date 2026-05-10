@@ -25,19 +25,19 @@ Yang tidak boleh diklaim tanpa sensor atau kalibrasi tambahan:
 - Nilai N dari Gazebo tidak boleh ditulis sebagai gaya motor aktual sebelum ada
   pemetaan actuator yang divalidasi.
 
-## Ringkasan terbaru setelah model visual
+## Ringkasan terbaru setelah tuning hardware-logical swing-up
 
 Sumber data:
-`data_exports/post_visual_balance_validation_20260510.csv`
+`data_exports/hardware_logical_swing_validation_20260510.csv`
 
 Ringkasan lengkap:
-`data_exports/swing_up_real_reference_summary_20260510.csv`
+`data_exports/hardware_logical_swing_real_reference_summary_20260510.csv`
 
 | Workspace | Durasi swing-up | Mean abs effort | RMS effort | P95/peak effort | Abs impulse | Positive cmd-work | Energy ready ratio | Motor command mean / P95 / peak | PWM mean / P95 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `ros2_pendulum_ws` | 8.194 s | 56.617 N | 65.631 N | 90.000 / 92.084 N | 466.727 N.s | 102.424 J | 0.992 | 25.481 / 86.748 / 126.000 cm/s | - |
-| `pendulum_real_ws` | 8.126 s | 83.011 N | 100.846 N | 145.000 / 145.000 N | 692.949 N.s | 124.536 J | 0.993 | 23.774 / 59.950 / 203.000 cm/s | 7686 / 14549 |
-| `pendulum_pid_ws` | 8.465 s | 84.991 N | 103.772 N | 145.000 / 145.000 N | 722.098 N.s | 136.866 J | 0.994 | 25.032 / 62.467 / 203.000 cm/s | 7906 / 15024 |
+| `ros2_pendulum_ws` | 5.529 s | 7.841 N | 12.911 N | 26.663 / 60.052 N | 43.214 N.s | 8.608 J | 0.991 | 9.856 / 32.237 / 57.491 cm/s | - |
+| `pendulum_real_ws` | 4.625 s | 11.094 N | 16.808 N | 30.835 / 65.000 N | 52.264 N.s | 11.328 J | 0.993 | 12.490 / 35.599 / 75.969 cm/s | 5359 / 9944 |
+| `pendulum_pid_ws` | 4.562 s | 9.863 N | 16.100 N | 36.352 / 65.000 N | 44.770 N.s | 10.786 J | 0.991 | 11.328 / 32.950 / 57.962 cm/s | 5210 / 9443 |
 
 Makna tabel:
 
@@ -60,13 +60,15 @@ Kalimat yang aman:
 ```text
 Gaya swing-up pada penelitian ini digunakan sebagai patokan awal actuator real
 melalui envelope hasil simulasi. Controller berbasis energi menaikkan energi
-pendulum hingga sekitar 99% energi referensi posisi tegak, dengan batas effort
-cart model sebesar +/-90 N pada ros2_pendulum_ws dan +/-145 N pada
-pendulum_real_ws serta pendulum_pid_ws. Karena belum digunakan sensor gaya motor
-fisik, nilai force Gazebo tidak diklaim sebagai gaya motor aktual, tetapi
-digunakan sebagai referensi command envelope yang kemudian harus divalidasi
-terhadap log alat asli berupa sudut pendulum, posisi/kecepatan cart, PWM atau
-arus motor, durasi swing-up, dan keberhasilan masuk fase balance.
+pendulum hingga sekitar 99% energi referensi posisi tegak. Setelah tuning
+hardware-logical, cap effort model dibuat lebih konservatif, yaitu sekitar
++/-70 N untuk swing-up dan +/-65 N untuk catch. Run headless terbaru tetap masuk
+fase balance, dengan mean effort swing-up sekitar 7.8 N sampai 11.1 N dan peak
+sekitar 60 N sampai 65 N. Karena belum digunakan sensor gaya motor fisik, nilai
+force Gazebo tidak diklaim sebagai gaya motor aktual, tetapi digunakan sebagai
+referensi command envelope yang kemudian harus divalidasi terhadap log alat asli
+berupa sudut pendulum, posisi/kecepatan cart, PWM atau arus motor, durasi
+swing-up, dan keberhasilan masuk fase balance.
 ```
 
 Kalimat singkat untuk kesimpulan:
@@ -82,8 +84,8 @@ diperlukan sebelum nilai N dari Gazebo disebut sebagai gaya motor fisik.
 ```bash
 cd /home/ammar/Documents/Pendulum
 python3 data_exports/build_swing_up_real_reference.py \
-  --samples data_exports/post_visual_balance_validation_20260510.csv \
-  --output data_exports/swing_up_real_reference_summary_20260510.csv
+  --samples data_exports/hardware_logical_swing_validation_20260510.csv \
+  --output data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
 ```
 
 Untuk data capture lama:

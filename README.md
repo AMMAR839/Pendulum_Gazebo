@@ -265,8 +265,8 @@ pendulum, command kecepatan cart, dan PWM ekuivalen untuk workspace real-style.
 File utama:
 
 - `data_exports/SWING_UP_REAL_REFERENCE.md`: narasi laporan dan batas klaim.
-- `data_exports/swing_up_real_reference_summary_20260510.csv`: ringkasan terbaru
-  setelah validasi model visual.
+- `data_exports/hardware_logical_swing_real_reference_summary_20260510.csv`:
+  ringkasan terbaru setelah force swing-up/catch dibuat lebih konservatif.
 - `data_exports/build_swing_up_real_reference.py`: generator ringkasan.
 
 Klaim yang aman untuk laporan:
@@ -275,6 +275,23 @@ Klaim yang aman untuk laporan:
 Simulasi digunakan sebagai patokan awal kebutuhan energi, durasi swing-up, dan
 envelope command actuator. Nilai force Gazebo belum diklaim sebagai gaya motor
 fisik sampai dibandingkan dengan log alat asli.
+```
+
+## Catatan swing-up hardware-logical
+
+Swing-up tetap memakai teori energy-based swing-up. Perbaikan terbaru tidak
+mengganti teorinya, tetapi membuat command lebih halus dengan menurunkan kick
+awal, menurunkan minimum pump force, menambahkan rate limit pada force
+swing-up, serta menurunkan cap swing/catch menjadi `70 N` / `65 N`. Validasi
+bersih menunjukkan ketiga workspace tetap masuk `BALANCE`, sementara rata-rata
+effort swing-up berada sekitar `7.8 N` sampai `11.1 N` dan peak berada di
+sekitar `60 N` sampai `65 N` pada run headless terbaru.
+
+Ringkasan validasi:
+
+```text
+data_exports/hardware_logical_swing_validation_summary_20260510.csv
+data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
 ```
 
 ## Build semua workspace

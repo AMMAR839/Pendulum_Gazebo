@@ -1,0 +1,7 @@
+workspace,phase,samples,duration_s,degree_abs_mean_deg,sim_joint_effort_min_n,sim_joint_effort_max_n,sim_joint_effort_abs_mean_n,motor_command_abs_mean_cm_s,setspeed_abs_mean_cm_s,real_ws_pwm_equiv_abs_mean,hinge_assist_abs_mean_nm,interpretation,notes
+pid_smooth,BALANCE,369,18.835000,0.439503,-20.000000,25.986454,0.466465,0.402563,0.510686,,0.014643,sim_joint_effort_only_not_real_motor_force,manual_A_near_upright
+pid_smooth,SWING_UP,105,5.345000,121.167835,-36.096507,78.114119,9.637032,11.992797,12.481460,,0.342348,sim_joint_effort_only_not_real_motor_force,auto_capture;manual_A_near_upright
+real_smooth,BALANCE,387,19.763000,0.428851,-22.727548,20.000000,0.258129,0.412174,0.350114,,0.017492,sim_joint_effort_only_not_real_motor_force,manual_A_near_upright
+real_smooth,SWING_UP,87,4.409000,113.399402,-57.423286,33.798062,11.771010,14.341405,14.184469,,0.353359,sim_joint_effort_only_not_real_motor_force,auto_capture;manual_A_near_upright
+ros2_smooth,BALANCE,381,19.462000,0.434878,-19.202595,20.000000,0.438221,0.542191,0.435786,,0.017842,sim_joint_effort_only_not_real_motor_force,manual_A_near_upright
+ros2_smooth,SWING_UP,93,4.720000,118.318296,-67.373890,30.959057,11.184548,13.612445,13.940856,,0.261067,sim_joint_effort_only_not_real_motor_force,auto_capture;manual_A_near_upright
