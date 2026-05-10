@@ -2,7 +2,7 @@
 
 File di folder ini dipakai untuk membandingkan runtime tiga workspace:
 
-- `ros2_pendulum_ws`: workspace demo yang lebih mudah dibuat tegak.
+- `lqr-pendulum`: workspace LQR. Beberapa CSV lama masih menyimpan label historis `ros2_pendulum_ws`.
 - `pendulum_real_ws`: workspace manual-book-style yang lebih dekat ke model alat, tetapi tetap memakai bantuan simulasi saat demo tegak.
 - `pendulum_pid_ws`: turunan real-style untuk membandingkan balance PID.
 
@@ -13,7 +13,9 @@ Kolom `cart_force_cmd_n` pada `runtime_swing_balance_samples.csv` adalah
 Nilai ini sengaja bisa besar karena dipakai untuk membuat simulasi mampu catch
 dan balance:
 
-- `ros2_pendulum_ws`: sampai sekitar `340 N` saat balance.
+- Data lama berlabel `ros2_pendulum_ws`: sampai sekitar `340 N` saat balance.
+  Setelah rename ke `lqr-pendulum`, jalur balance aktif memakai LQR dengan force
+  limit yang lebih konservatif; ambil ulang CSV jika butuh angka LQR terbaru.
 - `pendulum_real_ws`: sampai sekitar `150 N` saat balance.
 
 Jadi angka tersebut valid untuk debug Gazebo, tetapi tidak boleh langsung
@@ -66,16 +68,17 @@ Jalankan:
 ```bash
 cd /home/ammar/Documents/Pendulum
 python3 data_exports/build_swing_up_real_reference.py \
-  --samples data_exports/hardware_logical_swing_validation_20260510.csv \
-  --output data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
+  --samples data_exports/multi_swing_validation_20260510.csv \
+  --output data_exports/multi_swing_real_reference_summary_20260510.csv
 ```
 
 Jika ingin melihat validasi setelah command swing-up dibuat lebih konservatif
-untuk hardware, pakai:
+dan ditahan lebih lama sebelum balance, pakai:
 
 ```text
-data_exports/hardware_logical_swing_validation_summary_20260510.csv
-data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
+data_exports/multi_swing_validation_summary_20260510.csv
+data_exports/multi_swing_pass_summary_20260510.csv
+data_exports/multi_swing_real_reference_summary_20260510.csv
 ```
 
 Dokumen ringkas untuk laporan ada di:
@@ -83,6 +86,18 @@ Dokumen ringkas untuk laporan ada di:
 ```text
 data_exports/SWING_UP_REAL_REFERENCE.md
 ```
+
+## Uji impulse eksternal
+
+Ringkasan batas impulse eksternal terbaru:
+
+```text
+data_exports/external_impulse_threshold_summary_20260510_dashboard.csv
+```
+
+Protocol uji: dashboard menunggu `BALANCE` stabil, memberi gaya ujung pendulum
+selama `0.20 s`, mengembalikan gaya ke `0 N`, lalu menilai apakah pendulum
+kembali stabil tanpa keluar mode balance atau menyentuh batas rail.
 
 Klaim yang aman: simulasi adalah patokan awal kebutuhan energi, durasi swing-up,
 dan envelope command actuator. Klaim gaya motor fisik tetap harus divalidasi

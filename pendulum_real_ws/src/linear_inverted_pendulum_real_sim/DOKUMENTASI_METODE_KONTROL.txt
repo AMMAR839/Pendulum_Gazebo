@@ -147,8 +147,8 @@ atas beberapa kali dan energi sudah cukup:
   swing_kick_mps = 0.82
   swing_force_limit_n = 145.0
   swing_min_top_passes_before_catch = 3
-  swing_min_energy_build_time_s = 5.0
-  swing_energy_ready_ratio = 0.84
+  swing_min_energy_build_time_s = 8.0
+  swing_energy_ready_ratio = 0.88
   swing_top_pass_angle_deg = 80.0
 
 Jika tombol A ditekan saat SWING_UP belum siap, bridge menyimpan request balance
@@ -190,10 +190,10 @@ ke bawah.
 Capture dibuat lebih ketat agar balance tidak meminta gaya besar karena masuk
 terlalu awal:
 
-  balance_capture_deg = 9.0
-  balance_capture_rate_rad_s = 1.0
-  balance_capture_cart_pos_m = 0.30
-  balance_capture_cart_vel_mps = 1.4
+  balance_capture_deg = 10.0
+  balance_capture_rate_rad_s = 2.4
+  balance_capture_cart_pos_m = 0.08
+  balance_capture_cart_vel_mps = 2.2
   catch_region_deg = 95.0
   catch_region_rate_rad_s = 14.0
   catch_force_limit_n = 95.0

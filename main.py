@@ -21,10 +21,12 @@ from lib_gui import PendulumGUI
 PORT = os.environ.get("PENDULUM_PORT", "COM4")
 BAUD = int(os.environ.get("PENDULUM_BAUD", "115200"))
 NO_JOYSTICK = os.environ.get("PENDULUM_NO_JOYSTICK", "0") == "1"
-IS_REAL_SIM_PORT = PORT.startswith("/tmp/pendulum_real_serial")
-IS_PID_SIM_PORT = PORT.startswith("/tmp/pendulum_pid_serial")
+IS_REAL_SIM_PORT = PORT.startswith(("/tmp/pendulum_real_serial", "/tmp/pendulum_real_dashboard_serial"))
+IS_PID_SIM_PORT = PORT.startswith(("/tmp/pendulum_pid_serial", "/tmp/pendulum_pid_dashboard_serial"))
+IS_LQR_SIM_PORT = PORT.startswith(("/tmp/pendulum_lqr_serial", "/tmp/pendulum_lqr_dashboard_serial"))
 IS_SIM_PORT = (
 	PORT.startswith("/tmp/pendulum_sim_serial")
+	or IS_LQR_SIM_PORT
 	or IS_REAL_SIM_PORT
 	or IS_PID_SIM_PORT
 	or os.environ.get("PENDULUM_SIM", "0") == "1"
@@ -33,7 +35,7 @@ FPS = 50
 EXTERNAL_FORCE_N = float(os.environ.get("PENDULUM_EXTERNAL_FORCE_N", "2.05"))
 EXTERNAL_FORCE_SIGN = -1.0 if os.environ.get("PENDULUM_EXTERNAL_FORCE_SIGN", "positive").lower() in ("negative", "-", "-1") else 1.0
 
-if IS_REAL_SIM_PORT or IS_PID_SIM_PORT:
+if IS_REAL_SIM_PORT or IS_PID_SIM_PORT or IS_LQR_SIM_PORT:
 	DEFAULT_GAINS = {
 		"K_TH": 10.0,
 		"K_TH_D": 3.0,

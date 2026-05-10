@@ -8,7 +8,7 @@ def run_monitoring():
     """Monitor pendulum state dari ROS topic"""
     cmd = "source /opt/ros/jazzy/setup.bash && ros2 topic echo /pendulum/sim_state -n 100 --csv"
     try:
-        subprocess.run(cmd, shell=True, cwd="/home/ammar/Documents/Pendulum/ros2_pendulum_ws")
+        subprocess.run(cmd, shell=True, cwd="/home/ammar/Documents/Pendulum/lqr-pendulum")
     except KeyboardInterrupt:
         pass
 

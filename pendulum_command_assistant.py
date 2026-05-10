@@ -40,14 +40,14 @@ class WorkspaceConfig:
 
 
 WORKSPACES = {
-    "ros2": WorkspaceConfig(
-        key="ros2",
-        label="Pendulum ROS2 demo",
-        workspace=ROOT / "ros2_pendulum_ws",
+    "lqr": WorkspaceConfig(
+        key="lqr",
+        label="Pendulum LQR",
+        workspace=ROOT / "lqr-pendulum",
         package="linear_inverted_pendulum_sim",
         launch_file="sim.launch.py",
-        serial_link="/tmp/pendulum_sim_command_serial",
-        aliases=("ros2", "demo", "sim", "easier", "biasa"),
+        serial_link="/tmp/pendulum_lqr_command_serial",
+        aliases=("lqr", "ros2", "demo", "sim", "easier", "biasa"),
     ),
     "real": WorkspaceConfig(
         key="real",
@@ -68,6 +68,12 @@ WORKSPACES = {
         aliases=("pid", "pendulum pid", "pemdulum pid"),
     ),
 }
+
+
+def resolve_ros_domain_id(value):
+    if str(value).lower() != "auto":
+        return str(value)
+    return str(100 + (os.getpid() % 80))
 
 
 class StateMonitor(Node):
@@ -330,7 +336,11 @@ class PendulumCommandAssistant:
                 self.balance_now()
                 balance_requested = True
 
-            if not balance_requested and elapsed >= self.args.force_balance_after:
+            if (
+                not balance_requested
+                and self.args.force_balance_after > 0.0
+                and elapsed >= self.args.force_balance_after
+            ):
                 self.balance_now()
                 balance_requested = True
 
@@ -349,7 +359,8 @@ class PendulumCommandAssistant:
         mode = int(round(state[7]))
         print(
             f"[STATUS] {self.current_ws.label}: mode={mode} "
-            f"degree={state[0]:+.2f} deg cart={state[1]:+.2f} cm"
+            f"degree={state[0]:+.2f} deg cart={state[1]:+.2f} cm "
+            f"x_ref={state[6]:+.2f} cm"
         )
 
 
@@ -547,16 +558,29 @@ def parse_args():
     parser.add_argument("--phrase-time-limit", type=float, default=4.0)
     parser.add_argument("--serial-timeout", type=float, default=35.0)
     parser.add_argument("--state-timeout", type=float, default=35.0)
+    parser.add_argument(
+        "--ros-domain-id",
+        default="auto",
+        help="ROS_DOMAIN_ID untuk run ini. Default auto agar tidak bercampur dengan launch lama.",
+    )
     parser.add_argument("--homing-timeout", type=float, default=8.0)
     parser.add_argument("--auto-timeout", type=float, default=35.0)
-    parser.add_argument("--min-swing-before-balance", type=float, default=1.8)
-    parser.add_argument("--manual-balance-deg", type=float, default=18.0)
-    parser.add_argument("--force-balance-after", type=float, default=10.0)
+    parser.add_argument("--min-swing-before-balance", type=float, default=4.0)
+    parser.add_argument("--manual-balance-deg", type=float, default=10.0)
+    parser.add_argument(
+        "--force-balance-after",
+        type=float,
+        default=0.0,
+        help="Kirim A paksa setelah N detik; 0 berarti nonaktif dan bridge menunggu capture yang siap.",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    args.ros_domain_id = resolve_ros_domain_id(args.ros_domain_id)
+    os.environ["ROS_DOMAIN_ID"] = args.ros_domain_id
+    print(f"[ROS] ROS_DOMAIN_ID={args.ros_domain_id}")
     rclpy.init(args=None)
     assistant = PendulumCommandAssistant(args)
 

@@ -11,7 +11,7 @@ Workspace yang dibahas:
 
 | Workspace | Package | Fokus |
 | --- | --- | --- |
-| `ros2_pendulum_ws` | `linear_inverted_pendulum_sim` | Simulasi awal/eksperimen ROS 2 + Gazebo. |
+| `lqr-pendulum` | `linear_inverted_pendulum_sim` | Simulasi awal/eksperimen ROS 2 + Gazebo. |
 | `pendulum_real_ws` | `linear_inverted_pendulum_real_sim` | Baseline Manual Book dengan model motor lebih realistis. |
 | `pendulum_pid_ws` | `linear_inverted_pendulum_pid_sim` | Turunan real-style dengan balance controller PID. |
 
@@ -30,9 +30,9 @@ Tujuan utamanya:
 
 1. Memodelkan cart-pendulum pada Gazebo.
 2. Menjaga alur GUI lama melalui pseudo serial.
-3. Menguji beberapa metode kontrol: PD, energy-based swing-up, full-state
-   feedback, LQR opsional, dan PID.
-4. Membandingkan simulasi demo, simulasi Manual Book, dan simulasi PID.
+3. Menguji beberapa metode kontrol: PD, energy-based swing-up, LQR,
+   full-state feedback Manual-style, dan PID.
+4. Membandingkan simulasi LQR, simulasi Manual Book, dan simulasi PID.
 
 ## 2. Arsitektur Sistem
 
@@ -438,11 +438,11 @@ Secara konsep:
 3. `R` besar membuat controller lebih hemat gaya.
 4. `R` kecil membuat controller lebih agresif.
 
-Pada repository ini, parameter dan fungsi LQR masih ada pada bridge `ros2`.
-Namun pada checkout aktif saat dokumen ini dibuat, default `balance_use_lqr`
-di `ros2_pendulum_ws` bernilai `False`, sehingga jalur balance aktif bukan LQR
-default. LQR tetap bisa dijelaskan sebagai metode opsional/eksperimen yang
-pernah dipakai atau bisa diaktifkan melalui parameter.
+Pada checkout aktif sekarang, workspace `lqr-pendulum` memakai LQR sebagai
+controller balance utama. Parameter `balance_use_lqr` bernilai `True` secara
+default, gain `K` dihitung dari model linear inverted pendulum dengan
+`solve_continuous_are`, dan fallback PID-like hanya dipakai jika LQR sengaja
+dimatikan untuk debugging.
 
 ## 11. Metode Balance PID
 
@@ -732,25 +732,25 @@ aktuator engsel tambahan.
 
 ## 15. Perbedaan Tiap Workspace
 
-### 15.1 `ros2_pendulum_ws`
+### 15.1 `lqr-pendulum`
 
 Path:
 
 ```text
-ros2_pendulum_ws/src/linear_inverted_pendulum_sim
+lqr-pendulum/src/linear_inverted_pendulum_sim
 ```
 
 Serial GUI:
 
 ```text
-/tmp/pendulum_sim_serial
+/tmp/pendulum_lqr_serial
 ```
 
 Peran:
 
 1. Workspace awal untuk integrasi ROS 2 + Gazebo.
 2. Dipakai untuk menguji pseudo serial, topic, status GUI, dan model Gazebo.
-3. Memiliki parameter LQR dan state-feedback untuk eksperimen.
+3. Memakai parameter LQR dan state-feedback sebagai metode balance aktif.
 
 Kondisi aktif pada checkout sekarang:
 
@@ -759,14 +759,14 @@ Kondisi aktif pada checkout sekarang:
 | Homing | PD |
 | Swing-up | Energy-based |
 | Capture | readiness gate |
-| Balance aktif | force feedback/PID-like upright controller, karena `balance_use_lqr=False` |
-| LQR | tersedia sebagai jalur opsional/eksperimen |
+| Balance aktif | LQR state feedback, karena `balance_use_lqr=True` |
+| LQR | controller utama saat mode `BALANCE` |
 | Assist | aktif default |
 
-Catatan laporan: jika ingin menulis riwayat pengembangan, `ros2_pendulum_ws`
-bisa disebut sebagai workspace demo yang pernah dipakai untuk jalur LQR/state
-feedback. Jika menulis kondisi implementasi sekarang, sebutkan bahwa default
-aktif sudah mengikuti gaya real-style dengan `balance_use_lqr=False`.
+Catatan laporan: `lqr-pendulum` boleh disebut sebagai workspace LQR karena
+jalur balance aktif memanggil state feedback `u = -Kx`. Batas klaimnya tetap
+simulasi Gazebo: force yang dilaporkan adalah effort joint, bukan gaya motor
+fisik aktual.
 
 ### 15.2 `pendulum_real_ws`
 
@@ -859,7 +859,7 @@ Perbedaan utama dari `pendulum_real_ws`:
 | Energy swing-up | Semua workspace | Menaikkan pendulum ke atas | Cocok untuk kondisi jauh dari tegak | Perlu transisi/capture yang tepat |
 | Capture gate | Semua workspace, paling ketat di real-style/PID | Mencegah balance terlalu awal | Mengurangi gaya besar saat balance | Jika terlalu ketat bisa sulit masuk balance |
 | Full-state feedback | `pendulum_real_ws` | Menahan pendulum dengan beberapa state | Sesuai Manual-style | Perlu tanda dan gain yang tepat |
-| LQR | Opsional/eksperimen terutama `ros2_pendulum_ws` | State feedback berbasis optimisasi | Sistematis lewat Q/R | Butuh model linear yang cocok |
+| LQR | Opsional/eksperimen terutama `lqr-pendulum` | State feedback berbasis optimisasi | Sistematis lewat Q/R | Butuh model linear yang cocok |
 | PID sudut | `pendulum_pid_ws` | Pembanding metode PID | Mudah dijelaskan dan dituning | Sudut saja tidak cukup, perlu PD cart |
 | Motor real-style | `pendulum_real_ws`, `pendulum_pid_ws` | Mendekati respons motor asli | Lebih realistis | Membuat balance lebih sulit |
 | Hinge assist | Simulasi | Membantu stabilitas Gazebo | Demo lebih stabil | Bukan aktuator hardware asli |
@@ -879,7 +879,7 @@ File data yang dibuat:
 | `data_exports/runtime_swing_balance_samples_20260509_three_ws.csv` | Semua sampel runtime gabungan tiga workspace. |
 | `data_exports/runtime_swing_balance_summary_20260509_three_ws.csv` | Ringkasan lengkap per workspace dan fase. |
 | `data_exports/runtime_swing_balance_interpreted_summary_20260509_three_ws.csv` | Ringkasan aman untuk laporan dengan label bahwa force adalah effort joint Gazebo. |
-| `data_exports/ros2_pendulum_ws_swing_balance_samples_20260509.csv` | Sampel khusus `ros2_pendulum_ws`. |
+| `data_exports/ros2_pendulum_ws_swing_balance_samples_20260509.csv` | Sampel historis workspace ini sebelum rename menjadi `lqr-pendulum`. |
 | `data_exports/pendulum_real_ws_swing_balance_samples_20260509.csv` | Sampel khusus `pendulum_real_ws`. |
 | `data_exports/pendulum_pid_ws_swing_balance_samples_20260509.csv` | Sampel khusus `pendulum_pid_ws`. |
 
@@ -890,14 +890,14 @@ fisik aktual pada alat asli.
 
 | Workspace | Sampel | Durasi swing-up | Rata-rata abs sudut | Rata-rata abs theta-dot | Rata-rata energi | Rata-rata abs force cart |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `ros2_pendulum_ws` | 133 | 6.749 s | 123.366 deg | 1.572 rad/s | 0.261 J | 49.044 N |
+| `lqr-pendulum` | 133 | 6.749 s | 123.366 deg | 1.572 rad/s | 0.261 J | 49.044 N |
 | `pendulum_real_ws` | 132 | 6.740 s | 127.752 deg | 1.634 rad/s | 0.245 J | 73.181 N |
 | `pendulum_pid_ws` | 130 | 6.622 s | 114.801 deg | 1.550 rad/s | 0.299 J | 64.360 N |
 
 Interpretasi:
 
 1. Semua workspace berhasil masuk fase `SWING_UP` dan mencapai area atas.
-2. `ros2_pendulum_ws` memakai batas swing-up lebih rendah, yaitu sekitar
+2. `lqr-pendulum` memakai batas swing-up lebih rendah, yaitu sekitar
    `+/-90 N`, sehingga rata-rata effort swing-up lebih kecil.
 3. `pendulum_real_ws` dan `pendulum_pid_ws` memakai batas swing-up real-style
    `+/-145 N`, sehingga rata-rata effort swing-up lebih besar.
@@ -908,7 +908,7 @@ Interpretasi:
 
 | Workspace | Sampel | Durasi balance | Rata-rata abs sudut | Rata-rata abs theta-dot | Rata-rata energi | Rata-rata abs force cart |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `ros2_pendulum_ws` | 456 | 23.434 s | 0.322 deg | 0.008 rad/s | 0.785 J | 0.302 N |
+| `lqr-pendulum` | 456 | 23.434 s | 0.322 deg | 0.008 rad/s | 0.785 J | 0.302 N |
 | `pendulum_real_ws` | 458 | 23.447 s | 0.324 deg | 0.007 rad/s | 0.785 J | 0.051 N |
 | `pendulum_pid_ws` | 459 | 23.547 s | 0.195 deg | 0.006 rad/s | 0.785 J | 0.072 N |
 
@@ -930,7 +930,7 @@ Interpretasi:
 
 | Workspace | Rata-rata abs assist saat swing-up | Rata-rata abs assist saat balance |
 | --- | ---: | ---: |
-| `ros2_pendulum_ws` | 0.190 Nm | 0.012 Nm |
+| `lqr-pendulum` | 0.190 Nm | 0.012 Nm |
 | `pendulum_real_ws` | 0.316 Nm | 0.005 Nm |
 | `pendulum_pid_ws` | 0.256 Nm | 0.006 Nm |
 
@@ -975,19 +975,20 @@ gaya motor fisik. Dasarnya adalah:
    posisi cart, kecepatan cart, PWM atau arus motor, dan keberhasilan masuk
    balance.
 
-Setelah tuning hardware-logical swing-up, ringkasan patokan swing-up dibuat di:
+Setelah tuning multi-swing hardware-logical, ringkasan patokan swing-up dibuat
+di:
 
 ```text
-data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
+data_exports/multi_swing_real_reference_summary_20260510.csv
 ```
 
 Ringkasan utama:
 
 | Workspace | Durasi swing-up | Mean abs effort | P95/peak effort | Abs impulse | Positive cmd-work | Energy ready ratio | Patokan command real |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `ros2_pendulum_ws` | 5.529 s | 7.841 N | 26.663 / 60.052 N | 43.214 N.s | 8.608 J | 0.991 | 9.856 / 32.237 / 57.491 cm/s |
-| `pendulum_real_ws` | 4.625 s | 11.094 N | 30.835 / 65.000 N | 52.264 N.s | 11.328 J | 0.993 | 12.490 / 35.599 / 75.969 cm/s; PWM mean/P95 5359 / 9944 |
-| `pendulum_pid_ws` | 4.562 s | 9.863 N | 36.352 / 65.000 N | 44.770 N.s | 10.786 J | 0.991 | 11.328 / 32.950 / 57.962 cm/s; PWM mean/P95 5210 / 9443 |
+| `lqr-pendulum` | 7.961 s | 5.290 N | 18.326 / 33.530 N | 42.248 N.s | 7.590 J | 1.022 | 7.394 / 25.508 / 47.057 cm/s |
+| `pendulum_real_ws` | 7.957 s | 4.958 N | 16.516 / 30.956 N | 39.610 N.s | 6.215 J | 1.014 | 6.941 / 23.122 / 43.339 cm/s; PWM mean/P95 4272 / 7584 |
+| `pendulum_pid_ws` | 7.950 s | 5.685 N | 17.246 / 28.169 N | 45.058 N.s | 7.260 J | 1.107 | 7.978 / 24.144 / 39.902 cm/s; PWM mean/P95 4549 / 7778 |
 
 Interpretasi:
 
@@ -995,12 +996,16 @@ Interpretasi:
    mengumpulkan energi sampai hampir sama dengan energi posisi tegak.
 2. `pendulum_real_ws` dan `pendulum_pid_ws` menjadi patokan real-style utama
    karena memakai model deadband PWM dan time constant motor.
-3. `ros2_pendulum_ws` tetap berguna sebagai pembanding simulasi, tetapi patokan
+3. `lqr-pendulum` tetap berguna sebagai pembanding simulasi, tetapi patokan
    real yang lebih kuat adalah workspace real-style.
-4. Limit swing-up/catch terbaru dibuat lebih konservatif, yaitu sekitar
-   `+/-70 N` untuk swing-up dan `+/-65 N` untuk catch, sehingga angka peak lebih
-   mudah dibandingkan dengan kemampuan actuator kecil.
-5. Angka N tetap disebut effort cart model Gazebo. Untuk mengubahnya menjadi
+4. Capture sekarang ditahan lebih lama dengan gate multi-swing:
+   `swing_min_top_passes_before_catch = 3`,
+   `swing_min_energy_build_time_s = 8.0`, dan
+   `swing_energy_ready_ratio = 0.88`.
+5. Limit swing-up/catch tetap konservatif, yaitu sekitar `+/-70 N` untuk
+   swing-up dan `+/-65 N` untuk catch, tetapi peak aktual pada validasi terbaru
+   hanya sekitar `28 N` sampai `33 N`.
+6. Angka N tetap disebut effort cart model Gazebo. Untuk mengubahnya menjadi
    gaya motor aktual, perlu kalibrasi actuator atau sensor gaya/arus pada alat
    asli.
 
@@ -1009,13 +1014,14 @@ Kalimat laporan yang aman:
 ```text
 Gaya swing-up digunakan sebagai patokan awal actuator real melalui envelope
 hasil simulasi. Controller berbasis energi menaikkan energi pendulum hingga
-sekitar 99% energi referensi posisi tegak. Setelah tuning hardware-logical, run
-headless terbaru memiliki rata-rata effort swing-up sekitar 7.8 N sampai 11.1 N
-dengan peak sekitar 60 N sampai 65 N, sehingga proses ayunan lebih mudah
-dibandingkan dengan kemampuan actuator kecil. Karena belum digunakan sensor gaya
-motor fisik, nilai force Gazebo tidak diklaim sebagai gaya motor aktual, tetapi
-digunakan sebagai referensi command envelope yang harus divalidasi terhadap log
-alat asli.
+sekitar energi referensi posisi tegak. Setelah tuning multi-swing
+hardware-logical, capture ditahan sampai swing-up membangun energi sekitar 8 s.
+Run headless terbaru memiliki rata-rata effort swing-up sekitar 4.9 N sampai
+5.7 N dengan peak sekitar 28 N sampai 34 N, sehingga proses ayunan lebih
+bertahap dan lebih mudah dibandingkan dengan kemampuan actuator kecil. Karena
+belum digunakan sensor gaya motor fisik, nilai force Gazebo tidak diklaim
+sebagai gaya motor aktual, tetapi digunakan sebagai referensi command envelope
+yang harus divalidasi terhadap log alat asli.
 ```
 
 ## 18. Hal yang Harus Dijelaskan di Laporan
@@ -1039,7 +1045,7 @@ Untuk laporan, struktur yang disarankan:
    PID, motor model, implementasi Gazebo, dan assist simulasi.
 
 5. Implementasi workspace:
-   jelaskan perbedaan `ros2_pendulum_ws`, `pendulum_real_ws`, dan
+   jelaskan perbedaan `lqr-pendulum`, `pendulum_real_ws`, dan
    `pendulum_pid_ws` dengan tabel.
 
 6. Parameter dan tuning:
@@ -1085,7 +1091,7 @@ pendulum_pid_ws memakai PID sudut pendulum yang ditambah PD cart-centering.
 
 ```text
 Tiga workspace dibuat agar metode dapat dibandingkan secara jelas.
-ros2_pendulum_ws digunakan sebagai workspace integrasi dan eksperimen awal,
+lqr-pendulum digunakan sebagai workspace LQR untuk balance berbasis model,
 pendulum_real_ws digunakan sebagai baseline yang lebih dekat dengan Manual Book
 dan model motor real-style, sedangkan pendulum_pid_ws dibuat sebagai pembanding
 yang mengganti metode balance menjadi PID. Dengan pemisahan ini, perubahan
@@ -1111,8 +1117,8 @@ Kesimpulan utama:
 3. Perbedaan utama ada pada metode balance.
 4. `pendulum_real_ws` adalah baseline Manual-style dengan full-state feedback.
 5. `pendulum_pid_ws` adalah pembanding yang memakai PID sudut pendulum.
-6. `ros2_pendulum_ws` adalah workspace integrasi/eksperimen yang masih memiliki
-   jalur LQR opsional.
+6. `lqr-pendulum` adalah workspace LQR dengan `balance_use_lqr=True` sebagai
+   default.
 7. Motor model dan force limit real-style membuat simulasi lebih realistis
    tetapi lebih sulit dibanding model ideal.
 8. Assist engsel perlu ditulis sebagai bantuan simulasi, bukan komponen hardware

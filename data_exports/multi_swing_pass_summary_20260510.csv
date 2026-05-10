@@ -1,0 +1,4 @@
+workspace,swing_samples,balance_samples,last_phase,first_balance_s,large_angle_reversals,large_angle_side_changes,top_capture_passes_before_balance,swing_duration_s,swing_force_abs_mean_n,swing_force_abs_peak_n,energy_ready_ratio_at_peak,notes
+pid_multi_swing,152,622,BALANCE,8.278,9,3,1,7.950,5.685265,28.169400,1.107208,"multi_swing_gate_3_top_passes_or_8s_min_energy_build; capture after energy readiness, not immediate first upright"
+real_multi_swing,155,623,BALANCE,8.299,7,3,1,7.957,4.957976,30.956198,1.014170,"multi_swing_gate_3_top_passes_or_8s_min_energy_build; capture after energy readiness, not immediate first upright"
+ros2_multi_swing,154,622,BALANCE,8.283,10,3,1,7.961,5.290343,33.529804,1.022269,"multi_swing_gate_3_top_passes_or_8s_min_energy_build; capture after energy readiness, not immediate first upright"

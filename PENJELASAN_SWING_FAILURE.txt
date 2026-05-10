@@ -130,7 +130,7 @@ BAGIAN 6: DEBUGGING CHECKLIST - LAKUKAN INI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Terminal 1 - Launch Gazebo:
-  cd /home/ammar/Documents/Pendulum/ros2_pendulum_ws
+  cd /home/ammar/Documents/Pendulum/lqr-pendulum
   source install/setup.bash
   ros2 launch linear_inverted_pendulum_sim sim.launch.py
   
@@ -138,8 +138,8 @@ Terminal 1 - Launch Gazebo:
 
 Terminal 2 - Run GUI:
   cd /home/ammar/Documents/Pendulum
-  source ros2_pendulum_ws/install/setup.bash
-  PENDULUM_PORT=/tmp/pendulum_sim_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
+  source lqr-pendulum/install/setup.bash
+  PENDULUM_PORT=/tmp/pendulum_lqr_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
   
   👀 Lihat ada warning/error?
 

@@ -60,15 +60,18 @@ class WorkspaceConfig:
     serial_link: str
 
 
+LQR_WORKSPACE = WorkspaceConfig(
+    key="lqr",
+    label="Pendulum LQR",
+    workspace=ROOT / "lqr-pendulum",
+    package="linear_inverted_pendulum_sim",
+    launch_file="sim.launch.py",
+    serial_link="/tmp/pendulum_lqr_dashboard_serial",
+)
+
 WORKSPACES = {
-    "ros2": WorkspaceConfig(
-        key="ros2",
-        label="Pendulum ROS2 demo",
-        workspace=ROOT / "ros2_pendulum_ws",
-        package="linear_inverted_pendulum_sim",
-        launch_file="sim.launch.py",
-        serial_link="/tmp/pendulum_sim_dashboard_serial",
-    ),
+    "lqr": LQR_WORKSPACE,
+    "ros2": LQR_WORKSPACE,
     "real": WorkspaceConfig(
         key="real",
         label="Pendulum real/manual-book",
@@ -86,6 +89,12 @@ WORKSPACES = {
         serial_link="/tmp/pendulum_pid_dashboard_serial",
     ),
 }
+
+
+def resolve_ros_domain_id(value):
+    if str(value).lower() != "auto":
+        return str(value)
+    return str(100 + (os.getpid() % 80))
 
 
 class PlotMonitor(Node):
@@ -410,7 +419,11 @@ class DashboardRunner:
                     self.balance()
                     balance_requested = True
 
-                if not balance_requested and elapsed >= self.args.force_balance_after:
+                if (
+                    not balance_requested
+                    and self.args.force_balance_after > 0.0
+                    and elapsed >= self.args.force_balance_after
+                ):
                     self.balance()
                     balance_requested = True
 
@@ -489,7 +502,11 @@ class DashboardRunner:
                 self.balance()
                 balance_requested = True
 
-            if not balance_requested and elapsed >= self.args.force_balance_after:
+            if (
+                not balance_requested
+                and self.args.force_balance_after > 0.0
+                and elapsed >= self.args.force_balance_after
+            ):
                 self.balance()
                 balance_requested = True
 
@@ -504,6 +521,7 @@ class DashboardRunner:
                 self.monitor.mode() == MODE_BALANCE
                 and abs(self.monitor.degree()) <= self.args.external_stable_angle_deg
                 and abs(self.monitor.theta_dot()) <= self.args.external_stable_rate_rad_s
+                and abs(self.monitor.cart_cm()) <= self.args.external_stable_cart_cm
             )
             if stable:
                 if stable_since is None:
@@ -546,6 +564,7 @@ class DashboardRunner:
                 self.monitor.mode() == MODE_BALANCE
                 and abs(self.monitor.degree()) <= self.args.external_stable_angle_deg
                 and abs(self.monitor.theta_dot()) <= self.args.external_stable_rate_rad_s
+                and abs(self.monitor.cart_cm()) <= self.args.external_stable_cart_cm
             )
             if stable:
                 if stable_since is None:
@@ -964,7 +983,22 @@ def create_plot(screen_w, screen_h):
     return fig, axes, lines, status_text
 
 
-def update_plot(fig, axes, lines, status_text, rows, history_s):
+def smooth_values(values, window):
+    if window <= 1:
+        return values
+
+    smoothed = []
+    recent = deque(maxlen=window)
+    for value in values:
+        if math.isfinite(value):
+            recent.append(value)
+            smoothed.append(sum(recent) / len(recent))
+        else:
+            smoothed.append(value)
+    return smoothed
+
+
+def update_plot(fig, axes, lines, status_text, rows, history_s, smoothing_samples):
     if not rows:
         fig.canvas.draw_idle()
         fig.canvas.flush_events()
@@ -977,6 +1011,8 @@ def update_plot(fig, axes, lines, status_text, rows, history_s):
 
     for key, line in lines.items():
         y = [row[key] for row in rows]
+        if key in ("degree", "cart_cm", "cart_force"):
+            y = smooth_values(y, smoothing_samples)
         line.set_data(t, y)
 
     for ax in axes:
@@ -1006,7 +1042,7 @@ def parse_args():
     parser.add_argument(
         "--workspace",
         choices=sorted(WORKSPACES.keys()),
-        default="ros2",
+        default="lqr",
         help="Workspace yang dijalankan.",
     )
     parser.add_argument(
@@ -1019,15 +1055,31 @@ def parse_args():
     parser.add_argument("--headless", action="store_true", help="Uji tanpa UI Gazebo.")
     parser.add_argument("--duration", type=float, default=0.0, help="Stop otomatis setelah N detik.")
     parser.add_argument("--history", type=float, default=35.0, help="Rentang waktu grafik.")
-    parser.add_argument("--sample-period", type=float, default=0.05)
-    parser.add_argument("--plot-hz", type=float, default=15.0)
+    parser.add_argument("--sample-period", type=float, default=0.02)
+    parser.add_argument("--plot-hz", type=float, default=30.0)
+    parser.add_argument(
+        "--plot-smoothing-samples",
+        type=int,
+        default=3,
+        help="Moving-average ringan untuk grafik saja; status dan data ROS tetap raw.",
+    )
     parser.add_argument("--serial-timeout", type=float, default=45.0)
     parser.add_argument("--state-timeout", type=float, default=45.0)
+    parser.add_argument(
+        "--ros-domain-id",
+        default="auto",
+        help="ROS_DOMAIN_ID untuk run ini. Default auto agar tidak bercampur dengan launch lama.",
+    )
     parser.add_argument("--homing-timeout", type=float, default=8.0)
     parser.add_argument("--auto-timeout", type=float, default=40.0)
-    parser.add_argument("--min-swing-before-balance", type=float, default=1.8)
-    parser.add_argument("--manual-balance-deg", type=float, default=18.0)
-    parser.add_argument("--force-balance-after", type=float, default=10.0)
+    parser.add_argument("--min-swing-before-balance", type=float, default=4.0)
+    parser.add_argument("--manual-balance-deg", type=float, default=10.0)
+    parser.add_argument(
+        "--force-balance-after",
+        type=float,
+        default=0.0,
+        help="Kirim A paksa setelah N detik; 0 berarti nonaktif dan bridge menunggu capture yang siap.",
+    )
     parser.add_argument(
         "--external-impulse-force",
         type=float,
@@ -1056,6 +1108,12 @@ def parse_args():
     parser.add_argument("--external-stable-timeout", type=float, default=20.0)
     parser.add_argument("--external-stable-angle-deg", type=float, default=2.0)
     parser.add_argument("--external-stable-rate-rad-s", type=float, default=0.35)
+    parser.add_argument(
+        "--external-stable-cart-cm",
+        type=float,
+        default=3.0,
+        help="Cart harus dekat tengah sebelum balance dianggap stabil untuk uji impulse.",
+    )
     parser.add_argument("--external-fail-angle-deg", type=float, default=18.0)
     parser.add_argument("--external-rail-fail-cm", type=float, default=38.0)
     parser.add_argument(
@@ -1086,6 +1144,9 @@ def parse_args():
 
 def main():
     args = parse_args()
+    args.ros_domain_id = resolve_ros_domain_id(args.ros_domain_id)
+    os.environ["ROS_DOMAIN_ID"] = args.ros_domain_id
+    print(f"[ROS] ROS_DOMAIN_ID={args.ros_domain_id}")
     max_points = max(200, int(args.history / max(args.sample_period, 1e-3)) + 200)
 
     rclpy.init(args=None)
@@ -1100,7 +1161,15 @@ def main():
         tile_until = time.monotonic() + 20.0
 
         def pump_plot():
-            update_plot(fig, axes, lines, status_text, monitor.snapshot(), args.history)
+            update_plot(
+                fig,
+                axes,
+                lines,
+                status_text,
+                monitor.snapshot(),
+                args.history,
+                args.plot_smoothing_samples,
+            )
             if time.monotonic() < tile_until:
                 tile_dashboard_windows(runner.screen_w, runner.screen_h)
 
@@ -1111,7 +1180,15 @@ def main():
         period = 1.0 / max(1.0, args.plot_hz)
 
         while plt.fignum_exists(fig.number):
-            update_plot(fig, axes, lines, status_text, monitor.snapshot(), args.history)
+            update_plot(
+                fig,
+                axes,
+                lines,
+                status_text,
+                monitor.snapshot(),
+                args.history,
+                args.plot_smoothing_samples,
+            )
             if (
                 args.exit_after_external
                 and runner.external_test_requested()

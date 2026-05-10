@@ -127,13 +127,13 @@ self.declare_parameter("swing_gain", 2.70)
 self.declare_parameter("swing_kick_mps", 0.82)
 self.declare_parameter("swing_force_limit_n", 145.0)
 self.declare_parameter("swing_min_top_passes_before_catch", 3)
-self.declare_parameter("swing_min_energy_build_time_s", 5.0)
-self.declare_parameter("swing_energy_ready_ratio", 0.84)
+self.declare_parameter("swing_min_energy_build_time_s", 8.0)
+self.declare_parameter("swing_energy_ready_ratio", 0.88)
 self.declare_parameter("swing_top_pass_angle_deg", 80.0)
-self.declare_parameter("balance_capture_deg", 9.0)
-self.declare_parameter("balance_capture_rate_rad_s", 1.0)
-self.declare_parameter("balance_capture_cart_pos_m", 0.30)
-self.declare_parameter("balance_capture_cart_vel_mps", 1.4)
+self.declare_parameter("balance_capture_deg", 10.0)
+self.declare_parameter("balance_capture_rate_rad_s", 2.4)
+self.declare_parameter("balance_capture_cart_pos_m", 0.08)
+self.declare_parameter("balance_capture_cart_vel_mps", 2.2)
 self.declare_parameter("catch_region_deg", 95.0)
 self.declare_parameter("catch_region_rate_rad_s", 14.0)
 ```
@@ -142,7 +142,7 @@ Dengan nilai ini, workspace tidak langsung menangkap pendulum pada ayunan
 pertama. `SWING_UP` harus melewati area atas beberapa kali dan energinya harus
 mencapai rasio minimum sebelum `catch` atau `BALANCE` boleh aktif. Jika gerak
 pendulum sudah berada dekat atas dan tidak kembali melewati area bawah, gate
-waktu minimal `5.0 s` tetap mencegah balance terlalu dini tanpa mengunci swing-up
+waktu minimal `8.0 s` tetap mencegah balance terlalu dini tanpa mengunci swing-up
 selamanya. Jika tombol `A` ditekan saat swing-up belum siap, request balance
 disimpan dulu dan baru dijalankan saat syarat energi/capture terpenuhi.
 

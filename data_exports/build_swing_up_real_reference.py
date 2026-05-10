@@ -68,8 +68,8 @@ def max_finite(values):
 
 
 def canonical_workspace(name):
-    if name.startswith("ros2"):
-        return "ros2_pendulum_ws"
+    if name.startswith("ros2") or name.startswith("lqr"):
+        return "lqr-pendulum"
     if name.startswith("real") or name.startswith("pendulum_real"):
         return "pendulum_real_ws"
     if name.startswith("pid") or name.startswith("pendulum_pid"):

@@ -9,7 +9,7 @@ tetap dipakai sebagai panel tombol, tuning gain, grafik, dan pembaca status.
 
 | Workspace | Package | Serial GUI | Launch | Tujuan utama |
 | --- | --- | --- | --- | --- |
-| `ros2_pendulum_ws` | `linear_inverted_pendulum_sim` | `/tmp/pendulum_sim_serial` | `sim.launch.py` | Simulasi demo yang lebih mudah bergerak dan cocok untuk eksperimen awal. |
+| `lqr-pendulum` | `linear_inverted_pendulum_sim` | `/tmp/pendulum_lqr_serial` | `sim.launch.py` | Workspace LQR untuk balance berbasis model linear. |
 | `pendulum_real_ws` | `linear_inverted_pendulum_real_sim` | `/tmp/pendulum_real_serial` | `real_sim.launch.py` | Simulasi yang lebih dekat ke Manual Book dan baseline yang sudah bisa tegak stabil. |
 | `pendulum_pid_ws` | `linear_inverted_pendulum_pid_sim` | `/tmp/pendulum_pid_serial` | `pid_sim.launch.py` | Turunan `pendulum_real_ws`, tetapi balance controller dibuat PID. |
 
@@ -67,10 +67,10 @@ Urutan operasi yang disarankan:
 7. Klik `A` hanya saat pendulum sudah dekat tegak jika ingin memaksa balance.
 8. Klik `B` untuk stop.
 
-Catatan tombol `A`: pada `pendulum_real_ws` dan `pendulum_pid_ws`, jika `A`
-ditekan saat masih `SWING_UP`, request balance disimpan dulu dan baru dipakai
-saat syarat capture sudah aman. Pada `ros2_pendulum_ws`, tombol `A` lebih
-langsung masuk balance.
+Catatan tombol `A`: pada semua workspace, jika `A` ditekan saat state belum
+masuk jendela capture, request balance disimpan dulu dan baru dipakai saat
+sudut, theta-dot, posisi cart, dan kecepatan cart sudah aman. Ini mencegah
+mode `BALANCE` aktif ketika cart masih jauh dari tengah.
 
 ## Topic utama
 
@@ -100,18 +100,18 @@ Interpretasi cepat:
 
 ## Perbedaan metode kontrol
 
-### 1. `ros2_pendulum_ws`
+### 1. `lqr-pendulum`
 
 Path:
 
 ```bash
-/home/ammar/Documents/Pendulum/ros2_pendulum_ws
+/home/ammar/Documents/Pendulum/lqr-pendulum
 ```
 
 Jalankan:
 
 ```bash
-cd /home/ammar/Documents/Pendulum/ros2_pendulum_ws
+cd /home/ammar/Documents/Pendulum/lqr-pendulum
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
@@ -122,27 +122,33 @@ GUI:
 
 ```bash
 cd /home/ammar/Documents/Pendulum
-PENDULUM_PORT=/tmp/pendulum_sim_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
+PENDULUM_PORT=/tmp/pendulum_lqr_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
 ```
 
 Sistem kontrol:
 
 - Homing: PD sederhana untuk membawa cart ke tengah.
 - Swing-up: energy-based swing-up.
-- Balance pada checkout aktif memakai force feedback/PID-like upright
-  controller karena default `balance_use_lqr=False`.
-- Parameter dan fungsi LQR masih tersedia sebagai jalur opsional/eksperimen
-  jika `balance_use_lqr` diaktifkan.
+- Balance memakai LQR aktif dengan default `balance_use_lqr=True`.
+- Gain LQR dihitung dari model linear inverted pendulum memakai bobot `Q/R`
+  (`lqr_q_x`, `lqr_q_x_dot`, `lqr_q_theta`, `lqr_q_theta_dot`, `lqr_r`).
+- Target regulasi balance adalah state tengah:
+  `[x, x_dot, theta, theta_dot] = [0, 0, 0, 0]`.
+- Error posisi cart dipakai sebagai bias sudut kecil pada LQR supaya cart
+  kembali ke tengah lewat state feedback, bukan dorongan kasar.
+- Jika `balance_use_lqr` dimatikan manual, bridge masih punya fallback
+  PID-like upright controller untuk debugging.
 - Ada assist engsel kecil untuk membantu simulasi.
-- Tuning sekarang lebih dekat ke real-style dibanding README awal, dengan
-  force limit lebih rendah daripada konfigurasi demo lama.
+- Tuning memakai force limit konservatif agar hasil simulasi tidak bergantung
+  pada effort Gazebo yang terlalu bebas.
 
 Kapan dipakai:
 
-- Untuk demo awal.
-- Untuk melihat alur serial, topic, dan GUI tanpa terlalu ketat mengikuti
-  karakter motor real.
-- Untuk eksperimen LQR opsional atau controller yang lebih bebas.
+- Untuk eksperimen dan pembuktian simulasi balance berbasis LQR.
+- Untuk membandingkan LQR dengan full-state feedback Manual-style di
+  `pendulum_real_ws` dan PID di `pendulum_pid_ws`.
+- Untuk laporan yang ingin memisahkan metode LQR dari metode Manual Book dan
+  PID.
 
 ### 2. `pendulum_real_ws`
 
@@ -240,16 +246,16 @@ Kapan dipakai:
 
 ## Perbandingan cepat
 
-| Aspek | `ros2_pendulum_ws` | `pendulum_real_ws` | `pendulum_pid_ws` |
+| Aspek | `lqr-pendulum` | `pendulum_real_ws` | `pendulum_pid_ws` |
 | --- | --- | --- | --- |
-| Fokus | Demo/eksperimen awal | Manual Book + real-style | PID balance |
-| Serial | `/tmp/pendulum_sim_serial` | `/tmp/pendulum_real_serial` | `/tmp/pendulum_pid_serial` |
+| Fokus | LQR balance | Manual Book + real-style | PID balance |
+| Serial | `/tmp/pendulum_lqr_serial` | `/tmp/pendulum_real_serial` | `/tmp/pendulum_pid_serial` |
 | Launch | `sim.launch.py` | `real_sim.launch.py` | `pid_sim.launch.py` |
 | Homing | PD | PD | PD |
 | Swing-up | Energy-based | Energy-based dengan readiness gate | Energy-based dengan readiness gate |
-| Balance | Force feedback/PID-like aktif, LQR opsional | Full-state feedback Manual-style | PID sudut + PD cart |
-| Motor model | Lebih demo-oriented | Deadband PWM + time constant | Deadband PWM + time constant |
-| Force limit | Lebih besar | Lebih rendah/real-style | Lebih rendah/real-style |
+| Balance | LQR aktif | Full-state feedback Manual-style | PID sudut + PD cart |
+| Motor model | Deadband PWM + time constant | Deadband PWM + time constant | Deadband PWM + time constant |
+| Force limit | LQR balance dibatasi | Lebih rendah/real-style | Lebih rendah/real-style |
 | Assist engsel | Ada | Ada, untuk stabilitas simulasi | Ada, untuk stabilitas simulasi |
 
 ## Patokan gaya swing-up untuk real
@@ -265,8 +271,9 @@ pendulum, command kecepatan cart, dan PWM ekuivalen untuk workspace real-style.
 File utama:
 
 - `data_exports/SWING_UP_REAL_REFERENCE.md`: narasi laporan dan batas klaim.
-- `data_exports/hardware_logical_swing_real_reference_summary_20260510.csv`:
-  ringkasan terbaru setelah force swing-up/catch dibuat lebih konservatif.
+- `data_exports/multi_swing_real_reference_summary_20260510.csv`: ringkasan
+  terbaru setelah force dibuat konservatif dan swing-up ditahan lebih lama
+  sebelum balance.
 - `data_exports/build_swing_up_real_reference.py`: generator ringkasan.
 
 Klaim yang aman untuk laporan:
@@ -277,21 +284,73 @@ envelope command actuator. Nilai force Gazebo belum diklaim sebagai gaya motor
 fisik sampai dibandingkan dengan log alat asli.
 ```
 
-## Catatan swing-up hardware-logical
+## Catatan swing-up multi-swing
 
 Swing-up tetap memakai teori energy-based swing-up. Perbaikan terbaru tidak
-mengganti teorinya, tetapi membuat command lebih halus dengan menurunkan kick
-awal, menurunkan minimum pump force, menambahkan rate limit pada force
-swing-up, serta menurunkan cap swing/catch menjadi `70 N` / `65 N`. Validasi
-bersih menunjukkan ketiga workspace tetap masuk `BALANCE`, sementara rata-rata
-effort swing-up berada sekitar `7.8 N` sampai `11.1 N` dan peak berada di
-sekitar `60 N` sampai `65 N` pada run headless terbaru.
+mengganti teorinya, tetapi mengembalikan cap swing/catch ke baseline yang bisa
+mencapai posisi tegak: `swing_force_limit_n = 145 N` dan
+`catch_force_limit_n = 95 N`. Balance tetap dibatasi lebih rendah dengan
+`balance_force_limit_n = 45 N`, sehingga gaya besar dipakai untuk membangun
+energi swing-up, bukan untuk menahan mode balance secara kasar. Gate terbaru
+tetap menahan capture sampai swing-up membangun energi lebih lama:
+`swing_min_top_passes_before_catch = 3`,
+`swing_min_energy_build_time_s = 8.0`, dan
+`swing_energy_ready_ratio = 0.88`.
+
+Validasi bersih menunjukkan ketiga workspace tetap masuk `BALANCE`. Fase
+swing-up berlangsung sekitar `8 s`, rata-rata effort turun menjadi sekitar
+`4.9 N` sampai `5.7 N`, dan peak hanya sekitar `28 N` sampai `34 N`. Ini lebih
+mudah dipertanggungjawabkan karena pendulum mengumpulkan energi lewat beberapa
+ayunan besar sebelum ditangkap ke balance.
+
+### Kenapa peak force masih masuk akal
+
+Peak force pada tabel bukan total energi ayunan dan bukan gaya rata-rata
+motor. Peak force adalah gaya cart terbesar sesaat pada satu sampel swing-up.
+Secara teori swing-up, controller perlu menaikkan energi pendulum dari posisi
+bawah ke dekat tegak:
+
+```text
+E_target = m_pendulum * g * (2 * l_com)
+E_target = 0.20 * 9.81 * (2 * 0.20)
+E_target ~= 0.785 J
+```
+
+Energi ini masuk dari kerja aktuator cart:
+
+```text
+W_cart ~= integral(F_cart * v_cart dt) = integral(F_cart dx)
+```
+
+Karena rail terbatas, arah gaya tidak selalu ideal, ada damping, dan sebagian
+dorongan hanya mengatur timing ayunan, kerja positif yang diperintah actuator
+lebih besar dari energi ideal pendulum. Pada validasi terbaru, estimasi kerja
+positif swing-up sekitar `6.2 J` sampai `7.6 J`, sedangkan kenaikan energi
+pendulum yang dibutuhkan sekitar `0.8 J`. Ini wajar untuk swing-up simulasi:
+aktuator memberi beberapa dorongan bolak-balik, tidak satu dorongan ideal.
+
+Dengan pulsa sesaat `28 N` sampai `34 N`, gaya tersebut masih logis untuk alat
+pendulum kecil jika dibaca sebagai peak aktuator cart. Jika memakai pulley
+radius `1 cm` sampai `2 cm`, torsi motor ekuivalennya kira-kira:
+
+```text
+tau = F * r / eta
+tau(34 N, r=0.01 m, eta=0.7) ~= 0.49 Nm
+tau(34 N, r=0.02 m, eta=0.7) ~= 0.97 Nm
+```
+
+Jadi peak force `28 N` sampai `34 N` dapat dipertanggungjawabkan sebagai peak
+effort simulasi yang muncul sesaat selama energy-based swing-up. Klaim ini
+tidak sama dengan klaim gaya motor fisik; untuk hardware harus tetap
+divalidasi dengan radius pulley, efisiensi transmisi, PWM/arus motor, dan log
+gerak cart.
 
 Ringkasan validasi:
 
 ```text
-data_exports/hardware_logical_swing_validation_summary_20260510.csv
-data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
+data_exports/multi_swing_validation_summary_20260510.csv
+data_exports/multi_swing_pass_summary_20260510.csv
+data_exports/multi_swing_real_reference_summary_20260510.csv
 ```
 
 ## Build semua workspace
@@ -299,7 +358,7 @@ data_exports/hardware_logical_swing_real_reference_summary_20260510.csv
 ```bash
 source /opt/ros/jazzy/setup.bash
 
-cd /home/ammar/Documents/Pendulum/ros2_pendulum_ws
+cd /home/ammar/Documents/Pendulum/lqr-pendulum
 colcon build --symlink-install
 
 cd /home/ammar/Documents/Pendulum/pendulum_real_ws
@@ -316,11 +375,15 @@ live, auto homing/swing/balance, lalu memberi gaya eksternal sekali saja
 sebagai impulse. Gaya eksternal ini adalah gaya ujung pendulum di simulasi; di
 bridge dikonversi menjadi torsi engsel, bukan gaya motor asli.
 
+Grafik dashboard sekarang lebih halus secara visual dengan default
+`--sample-period 0.02`, `--plot-hz 30`, dan `--plot-smoothing-samples 3`.
+Smoothing ini hanya memengaruhi tampilan grafik, bukan topic ROS atau CSV.
+
 Contoh memberi impulse 2 N selama 0.20 s:
 
 ```bash
 cd /home/ammar/Documents/Pendulum
-python3 pendulum_gazebo_plot_dashboard.py --workspace ros2 --external-impulse-force 2.0 --external-impulse-duration 0.20
+python3 pendulum_gazebo_plot_dashboard.py --workspace lqr --external-impulse-force 2.0 --external-impulse-duration 0.20
 python3 pendulum_gazebo_plot_dashboard.py --workspace real --external-impulse-force 2.0 --external-impulse-duration 0.20
 python3 pendulum_gazebo_plot_dashboard.py --workspace pid --external-impulse-force 2.0 --external-impulse-duration 0.20
 ```
@@ -332,7 +395,7 @@ Untuk mencari gaya impulse maksimum yang masih bisa dipertahankan:
 
 ```bash
 python3 pendulum_gazebo_plot_dashboard.py \
-  --workspace ros2 \
+  --workspace lqr \
   --find-max-external \
   --external-impulse-duration 0.20 \
   --external-max-forces 0.5,1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0,8.0,10.0
@@ -344,6 +407,21 @@ Output pentingnya:
 - `gaya gagal pertama`: gaya terkecil di daftar uji yang membuat keluar balance,
   sudut melewati batas, atau cart menyentuh batas rail.
 
+Hasil uji terbaru dengan impulse `0.20 s` dan effort cart di-slew-limit
+`320 N/s`:
+
+| Workspace | Positif aman/gagal | Negatif aman/gagal |
+| --- | ---: | ---: |
+| `lqr-pendulum` | `6 N / 8 N` | `6 N / 8 N` |
+| `pendulum_real_ws` | `6 N / 8 N` | `6 N / 8 N` |
+| `pendulum_pid_ws` | `4 N / 6 N` | `6 N / 8 N` |
+
+Dashboard sekarang menunggu balance yang benar-benar dekat tengah sebelum uji
+impulse: mode harus `BALANCE`, sudut dan theta-dot kecil, dan cart harus berada
+dalam batas `--external-stable-cart-cm` dari tengah. Kalau uji impulse
+dibatalkan, itu berarti state belum cukup stabil untuk diklaim sebagai uji
+gangguan yang bisa dipertanggungjawabkan.
+
 ## Verifikasi cepat
 
 Gunakan ini sebelum tuning:
@@ -352,20 +430,22 @@ Gunakan ini sebelum tuning:
 source /opt/ros/jazzy/setup.bash
 
 python3 -m py_compile main.py
-python3 -m py_compile ros2_pendulum_ws/src/linear_inverted_pendulum_sim/linear_inverted_pendulum_sim/sim_serial_bridge.py
+python3 -m py_compile lqr-pendulum/src/linear_inverted_pendulum_sim/linear_inverted_pendulum_sim/sim_serial_bridge.py
 python3 -m py_compile pendulum_real_ws/src/linear_inverted_pendulum_real_sim/linear_inverted_pendulum_real_sim/real_serial_bridge.py
 python3 -m py_compile pendulum_pid_ws/src/linear_inverted_pendulum_pid_sim/linear_inverted_pendulum_pid_sim/pid_serial_bridge.py
 
-check_urdf <(xacro ros2_pendulum_ws/src/linear_inverted_pendulum_sim/urdf/linear_inverted_pendulum.urdf.xacro)
+check_urdf <(xacro lqr-pendulum/src/linear_inverted_pendulum_sim/urdf/linear_inverted_pendulum.urdf.xacro)
 check_urdf <(xacro pendulum_real_ws/src/linear_inverted_pendulum_real_sim/urdf/linear_inverted_pendulum_real.urdf.xacro)
 check_urdf <(xacro pendulum_pid_ws/src/linear_inverted_pendulum_pid_sim/urdf/linear_inverted_pendulum_pid.urdf.xacro)
 ```
 
 ## Cara memilih workspace
 
-Pilih `ros2_pendulum_ws` kalau tujuan utamanya melihat simulasi bergerak,
-menguji plumbing ROS 2/Gazebo, atau eksperimen controller dengan toleransi gaya
-lebih besar.
+Pilih `lqr-pendulum` kalau tujuan utamanya menguji balance berbasis LQR.
+Klaim yang bisa dipertanggungjawabkan adalah simulasi model-based: state
+feedback LQR dihitung dari model linear, gaya tetap dibatasi, dan hasilnya
+dibaca sebagai effort joint Gazebo. Jangan klaim sebagai gaya motor fisik
+sebelum dibandingkan dengan log alat asli.
 
 Pilih `pendulum_real_ws` kalau tujuan utamanya mempertahankan bentuk Manual
 Book, motor model, dan baseline yang sudah dibuat agar pendulum bisa tegak

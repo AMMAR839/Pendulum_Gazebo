@@ -3,13 +3,13 @@
 Saya tambahkan workspace ROS 2 di:
 
 ```bash
-/home/ammar/Documents/Pendulum/ros2_pendulum_ws
+/home/ammar/Documents/Pendulum/lqr-pendulum
 ```
 
 Paket utamanya:
 
 ```bash
-ros2_pendulum_ws/src/linear_inverted_pendulum_sim
+lqr-pendulum/src/linear_inverted_pendulum_sim
 ```
 
 Model dibuat dari manual LIP01: travel translasi 78 cm, base 1000 mm x 350 mm, rail 900 mm, pendulum D8 x 400 mm dengan massa 200 g. Simulasi memakai Gazebo Harmonic 8 dan `ros_gz_bridge`.
@@ -17,7 +17,7 @@ Model dibuat dari manual LIP01: travel translasi 78 cm, base 1000 mm x 350 mm, r
 ## Build pertama kali
 
 ```bash
-cd /home/ammar/Documents/Pendulum/ros2_pendulum_ws
+cd /home/ammar/Documents/Pendulum/lqr-pendulum
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
@@ -51,15 +51,15 @@ Terminal baru:
 
 ```bash
 cd /home/ammar/Documents/Pendulum
-PENDULUM_PORT=/tmp/pendulum_sim_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
+PENDULUM_PORT=/tmp/pendulum_lqr_serial PENDULUM_NO_JOYSTICK=1 python3 main.py
 ```
 
-`/tmp/pendulum_sim_serial` dibuat otomatis oleh node ROS 2. Dari sisi `main.py`, port ini terlihat seperti serial STM32. Paket gain, reset, tombol A/B/X/Y, dan packet status memakai format yang sama dengan kode Python lama.
+`/tmp/pendulum_lqr_serial` dibuat otomatis oleh node ROS 2. Dari sisi `main.py`, port ini terlihat seperti serial STM32. Paket gain, reset, tombol A/B/X/Y, dan packet status memakai format yang sama dengan kode Python lama.
 
 ## Urutan tes
 
 1. Jalankan Gazebo dengan launch ROS 2.
-2. Jalankan `main.py` dengan `PENDULUM_PORT=/tmp/pendulum_sim_serial`.
+2. Jalankan `main.py` dengan `PENDULUM_PORT=/tmp/pendulum_lqr_serial`.
 3. Klik `Apply Gains`.
 4. Klik `START`.
 5. Klik `Y` untuk homing.
