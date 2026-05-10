@@ -1,0 +1,4 @@
+workspace,swing_up_samples,balance_samples,mode_switches,last_phase,validation_note
+ros2_balance_latch,125,427,1,BALANCE,balance remains latched unless the pendulum is truly fallen
+real_balance_latch,139,411,1,BALANCE,balance remains latched unless the pendulum is truly fallen
+pid_balance_latch,164,386,1,BALANCE,balance remains latched unless the pendulum is truly fallen

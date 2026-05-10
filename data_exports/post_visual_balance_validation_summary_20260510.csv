@@ -1,0 +1,4 @@
+workspace,swing_up_samples,balance_samples,mode_switches,first_balance_s,swing_after_balance,last_phase,swing_force_min_n,swing_force_max_n,swing_force_abs_mean_n,balance_force_min_n,balance_force_max_n,balance_force_abs_mean_n,validation_note
+ros2_post_visual,161,390,1,11.212,0,BALANCE,-90.000,92.084,56.617,-20.000,40.443,0.485,visual model did not change balance transition behavior
+real_post_visual,153,389,1,11.134,0,BALANCE,-145.000,145.000,83.011,-18.411,20.000,0.303,visual model did not change balance transition behavior
+pid_post_visual,166,385,1,11.535,0,BALANCE,-145.000,145.000,84.991,-25.832,20.000,0.361,visual model did not change balance transition behavior

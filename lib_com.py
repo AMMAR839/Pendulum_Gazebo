@@ -107,6 +107,32 @@ def send_reset(ser, seq=0):
     print("[TX] Reset command sent to STM32")
 
 
+def make_external_force_packet(seq, force_n):
+    """
+    Buat paket gaya eksternal khusus simulasi.
+
+    Format:
+    - Header: 0xAA 0x55
+    - Type: 0x04
+    - Seq: 1 byte
+    - Payload: 1 float, gaya pada ujung pendulum dalam Newton
+    - CRC: 2 bytes
+    """
+    header = b'\xAA\x55'
+    typ = 0x04
+    body = struct.pack('<BBf', typ, seq, float(force_n))
+    s = sum(body) & 0xFFFF
+    chksum = struct.pack('<H', s)
+    return header + body + chksum
+
+
+def send_external_force(ser, force_n, seq=0):
+    """Kirim gaya eksternal khusus simulasi lewat pseudo-serial."""
+    packet = make_external_force_packet(seq, force_n)
+    ser.write(packet)
+    print(f"[TX] External disturbance force sent: {force_n:.3f} N")
+
+
 def read_control_status(ser, callback=None, ack_callback=None, reset_ack_callback=None, debug: bool = False):
     """
     Thread pembaca data dari STM32.

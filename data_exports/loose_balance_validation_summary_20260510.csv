@@ -1,0 +1,4 @@
+workspace,swing_up_samples,balance_samples,last_phase,validation_note
+ros2_pendulum_ws,181,371,BALANCE,28s headless capture after looser balance tuning; Y then X then A near upright
+pendulum_real_ws,136,417,BALANCE,28s headless capture after looser balance tuning; Y then X then A near upright
+pendulum_pid_ws,219,334,BALANCE,28s headless capture after looser balance tuning; Y then X then A near upright

@@ -1,0 +1,4 @@
+workspace,swing_up_samples,balance_samples,mode_switches,last_phase,validation_note
+ros2_autolock,132,418,1,BALANCE,auto-lock keeps balance dominant after upright detection
+real_autolock,116,433,1,BALANCE,auto-lock keeps balance dominant after upright detection
+pid_autolock,148,402,1,BALANCE,auto-lock keeps balance dominant after upright detection

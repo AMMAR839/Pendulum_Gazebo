@@ -22,6 +22,7 @@ def generate_launch_description():
     robot_description_file = os.path.join(
         pkg_share, "urdf", "linear_inverted_pendulum_real.urdf.xacro"
     )
+    world_file = os.path.join(pkg_share, "worlds", "pendulum_close_camera.sdf")
     robot_description_xml = xacro.process_file(robot_description_file).toxml()
 
     gz_args = LaunchConfiguration("gz_args")
@@ -110,8 +111,12 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "gz_args",
-                default_value="-r empty.sdf",
-                description="Arguments passed to Gazebo Sim. Use '-r -s empty.sdf' for headless.",
+                default_value=f"-r {world_file}",
+                description=(
+                    "Arguments passed to Gazebo Sim. The default world keeps the "
+                    "initial GUI camera close to the pendulum. Use '-r -s empty.sdf' "
+                    "for headless."
+                ),
             ),
             DeclareLaunchArgument(
                 "gz_partition",

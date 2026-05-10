@@ -9,7 +9,7 @@ from threading import Lock
 from serial.tools import list_ports
 
 from lib_stick import init_joystick, joystick_sender
-from lib_com import open_serial,scan_ports,read_control_status, send_gains, send_reset, make_packet
+from lib_com import open_serial,scan_ports,read_control_status, send_gains, send_reset, make_packet, send_external_force
 from lib_data import DataLogger
 from lib_udp import UDPBroadcaster
 
@@ -30,6 +30,8 @@ IS_SIM_PORT = (
 	or os.environ.get("PENDULUM_SIM", "0") == "1"
 )
 FPS = 50
+EXTERNAL_FORCE_N = float(os.environ.get("PENDULUM_EXTERNAL_FORCE_N", "2.05"))
+EXTERNAL_FORCE_SIGN = -1.0 if os.environ.get("PENDULUM_EXTERNAL_FORCE_SIGN", "positive").lower() in ("negative", "-", "-1") else 1.0
 
 if IS_REAL_SIM_PORT or IS_PID_SIM_PORT:
 	DEFAULT_GAINS = {
@@ -70,7 +72,9 @@ pendulum_state = {
 	"running": False,
 	"gains_ack": False,
 	"gains_ack_values": None,
-	"reset_ack": False
+	"reset_ack": False,
+	"external_force_active": False,
+	"external_force_n": 0.0
 }
 state_lock = Lock()
 
@@ -123,6 +127,9 @@ class PendulumMonitor:
 		self.thread_rx = None
 		self.thread_tx = None
 		self.command_seq = 0
+		self.external_force_active = False
+		self.external_force_n = EXTERNAL_FORCE_N * EXTERNAL_FORCE_SIGN
+		self.gui.set_external_force_enabled(IS_SIM_PORT)
 
 		self.running = True
 		self.gains_sent = False
@@ -371,6 +378,8 @@ class PendulumMonitor:
 		print("=" * 50)
 
 		if self.serial:
+			if IS_SIM_PORT:
+				self.send_external_force_command(0.0)
 			print("Sending reset packet (type 0x03)...")
 			send_reset(self.serial)
 			with state_lock:
@@ -382,8 +391,11 @@ class PendulumMonitor:
 			pendulum_state["running"] = False
 			pendulum_state["cmX"] = X_CENTER_CM
 			pendulum_state["theta"] = 0.0
+			pendulum_state["external_force_active"] = False
+			pendulum_state["external_force_n"] = 0.0
 
 		self.gui.set_running_ui_lock(False)
+		self.gui.set_external_force_text(False, 0.0)
 
 		print("Waiting for STM32 reset ACK (0xAA 0xEE)...")
 		print("Expected: STM32 should go to State 1 (Wait for Homing)")
@@ -395,6 +407,38 @@ class PendulumMonitor:
 	def toggle_udp(self):
 		self.udp_broadcaster.toggle()
 		return self.udp_broadcaster.enabled
+
+	def send_external_force_command(self, force_n):
+		if not self.serial:
+			print("[EXT FORCE] Serial not connected")
+			return False
+		if not IS_SIM_PORT:
+			print("[EXT FORCE] ignored. This command is simulation-only.")
+			return False
+		send_external_force(self.serial, force_n, seq=self.command_seq)
+		self.command_seq = (self.command_seq + 1) & 0xFF
+		return True
+
+	def toggle_external_force(self):
+		if not IS_SIM_PORT:
+			return False
+		with state_lock:
+			is_running = pendulum_state["running"]
+		if not is_running:
+			print("[EXT FORCE] ignored. Click START first.")
+			return self.external_force_active
+
+		self.external_force_active = not self.external_force_active
+		force_n = self.external_force_n if self.external_force_active else 0.0
+		if not self.send_external_force_command(force_n):
+			self.external_force_active = False
+			force_n = 0.0
+
+		with state_lock:
+			pendulum_state["external_force_active"] = self.external_force_active
+			pendulum_state["external_force_n"] = force_n
+		self.gui.set_external_force_text(self.external_force_active, force_n)
+		return self.external_force_active
 
 	def send_button_mask(self, buttons, label):
 		if not self.serial:
@@ -451,6 +495,8 @@ class PendulumMonitor:
 				reset_ack = pendulum_state["reset_ack"]
 				cmX = pendulum_state["cmX"]
 				theta = pendulum_state["theta"]
+				external_force_active = pendulum_state["external_force_active"]
+				external_force_n = pendulum_state["external_force_n"]
 
 			# auto-clear gains_sent if ack too old (same behavior)
 			import time
@@ -468,6 +514,7 @@ class PendulumMonitor:
 					"reset": self.reset_system,
 					"toggle_record": self.toggle_record,
 					"toggle_udp": self.toggle_udp,
+					"toggle_external_force": self.toggle_external_force,
 					"start_graph": self.start_graph,
 					"stop_graph": self.stop_graph,
 
@@ -485,7 +532,9 @@ class PendulumMonitor:
 				"reset_ack": reset_ack,
 				"cmX": cmX,
 				"theta": theta,
-				"mode": self.mode
+				"mode": self.mode,
+				"external_force_active": external_force_active,
+				"external_force_n": external_force_n
 			}
 			#print(self.mode)
 

@@ -39,6 +39,30 @@
   <material name="red">
     <color rgba="0.9 0.05 0.05 1"/>
   </material>
+  <material name="dark_gray">
+    <color rgba="0.12 0.13 0.13 1"/>
+  </material>
+  <material name="rubber">
+    <color rgba="0.01 0.01 0.01 1"/>
+  </material>
+  <material name="chain_steel">
+    <color rgba="0.38 0.39 0.38 1"/>
+  </material>
+  <material name="aluminum">
+    <color rgba="0.82 0.84 0.82 1"/>
+  </material>
+  <material name="brass">
+    <color rgba="0.95 0.66 0.12 1"/>
+  </material>
+  <material name="yellow">
+    <color rgba="0.95 0.74 0.08 1"/>
+  </material>
+  <material name="white">
+    <color rgba="0.86 0.86 0.82 1"/>
+  </material>
+  <material name="screw_dark">
+    <color rgba="0.03 0.03 0.035 1"/>
+  </material>
 
   <xacro:macro name="box_inertia" params="mass x y z">
     <inertia
@@ -52,6 +76,26 @@
       ixx="${mass / 12.0 * (3.0*radius*radius + length*length)}" ixy="0" ixz="0"
       iyy="${mass / 12.0 * (3.0*radius*radius + length*length)}" iyz="0"
       izz="${0.5 * mass * radius * radius}"/>
+  </xacro:macro>
+
+  <xacro:macro name="screw_head" params="name x y z">
+    <visual name="${name}">
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.006" length="0.004"/>
+      </geometry>
+      <material name="screw_dark"/>
+    </visual>
+  </xacro:macro>
+
+  <xacro:macro name="chain_link" params="name x y z">
+    <visual name="${name}">
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.026 0.030 0.006"/>
+      </geometry>
+      <material name="chain_steel"/>
+    </visual>
   </xacro:macro>
 
   <link name="world"/>
@@ -83,6 +127,48 @@
       </geometry>
     </collision>
 
+    <visual name="front_aluminum_extrusion">
+      <origin xyz="0 ${base_width / 2.0 - 0.018} ${base_height + 0.012}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_length} 0.026 0.024"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <visual name="rear_aluminum_extrusion">
+      <origin xyz="0 ${-base_width / 2.0 + 0.018} ${base_height + 0.012}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_length} 0.026 0.024"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <visual name="front_silver_edge">
+      <origin xyz="0 ${base_width / 2.0 - 0.006} ${base_height + 0.030}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_length} 0.006 0.010"/>
+      </geometry>
+      <material name="aluminum"/>
+    </visual>
+    <visual name="rear_silver_edge">
+      <origin xyz="0 ${-base_width / 2.0 + 0.006} ${base_height + 0.030}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_length} 0.006 0.010"/>
+      </geometry>
+      <material name="aluminum"/>
+    </visual>
+    <visual name="front_linear_rail_profile">
+      <origin xyz="0 ${rail_y} ${rail_z - 0.025}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${rail_length} 0.028 0.020"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <visual name="rear_linear_rail_profile">
+      <origin xyz="0 ${-rail_y} ${rail_z - 0.025}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${rail_length} 0.028 0.020"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
     <visual name="front_linear_shaft">
       <origin xyz="0 ${rail_y} ${rail_z}" rpy="0 ${PI / 2.0} 0"/>
       <geometry>
@@ -104,6 +190,81 @@
       </geometry>
       <material name="orange"/>
     </visual>
+    <visual name="chain_back_track">
+      <origin xyz="0 -0.130 ${rail_z + 0.028}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${rail_length} 0.038 0.009"/>
+      </geometry>
+      <material name="rubber"/>
+    </visual>
+    <xacro:chain_link name="chain_link_00" x="-0.420" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_01" x="-0.374" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_02" x="-0.328" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_03" x="-0.282" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_04" x="-0.236" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_05" x="-0.190" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_06" x="-0.144" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_07" x="-0.098" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_08" x="-0.052" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_09" x="-0.006" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_10" x="0.040" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_11" x="0.086" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_12" x="0.132" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_13" x="0.178" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_14" x="0.224" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_15" x="0.270" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_16" x="0.316" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_17" x="0.362" y="-0.130" z="${rail_z + 0.036}"/>
+    <xacro:chain_link name="chain_link_18" x="0.408" y="-0.130" z="${rail_z + 0.036}"/>
+    <visual name="left_end_housing">
+      <origin xyz="${-rail_length / 2.0} 0 ${rail_z - 0.015}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.085 0.285 0.075"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <visual name="right_end_housing">
+      <origin xyz="${rail_length / 2.0} 0 ${rail_z - 0.015}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.085 0.285 0.075"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <visual name="left_chain_pulley">
+      <origin xyz="${-rail_length / 2.0 + 0.015} -0.130 ${rail_z + 0.035}" rpy="${PI / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="0.026" length="0.044"/>
+      </geometry>
+      <material name="steel"/>
+    </visual>
+    <visual name="right_chain_pulley">
+      <origin xyz="${rail_length / 2.0 - 0.015} -0.130 ${rail_z + 0.035}" rpy="${PI / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="0.026" length="0.044"/>
+      </geometry>
+      <material name="steel"/>
+    </visual>
+    <visual name="drive_motor_body">
+      <origin xyz="${-rail_length / 2.0 - 0.030} ${base_width / 2.0 - 0.060} ${base_height + 0.040}" rpy="0 ${PI / 2.0} 0"/>
+      <geometry>
+        <cylinder radius="0.034" length="0.115"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <visual name="drive_motor_front_band">
+      <origin xyz="${-rail_length / 2.0 - 0.090} ${base_width / 2.0 - 0.060} ${base_height + 0.040}" rpy="0 ${PI / 2.0} 0"/>
+      <geometry>
+        <cylinder radius="0.036" length="0.010"/>
+      </geometry>
+      <material name="screw_dark"/>
+    </visual>
+    <visual name="drive_motor_rear_band">
+      <origin xyz="${-rail_length / 2.0 + 0.030} ${base_width / 2.0 - 0.060} ${base_height + 0.040}" rpy="0 ${PI / 2.0} 0"/>
+      <geometry>
+        <cylinder radius="0.036" length="0.010"/>
+      </geometry>
+      <material name="screw_dark"/>
+    </visual>
     <visual name="left_limit_switch">
       <origin xyz="${-travel / 2.0 - 0.025} 0 ${rail_z}" rpy="0 0 0"/>
       <geometry>
@@ -118,6 +279,20 @@
       </geometry>
       <material name="red"/>
     </visual>
+    <xacro:screw_head name="screw_front_00" x="-0.450" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_front_01" x="-0.300" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_front_02" x="-0.150" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_front_03" x="0.000" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_front_04" x="0.150" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_front_05" x="0.300" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_front_06" x="0.450" y="${base_width / 2.0 - 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_00" x="-0.450" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_01" x="-0.300" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_02" x="-0.150" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_03" x="0.000" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_04" x="0.150" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_05" x="0.300" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
+    <xacro:screw_head name="screw_rear_06" x="0.450" y="${-base_width / 2.0 + 0.045}" z="${base_height + 0.003}"/>
   </link>
 
   <joint name="cart_slider" type="prismatic">
@@ -141,7 +316,7 @@
       <geometry>
         <box size="${cart_x} ${cart_y} ${cart_z}"/>
       </geometry>
-      <material name="blue"/>
+      <material name="dark_gray"/>
     </visual>
     <collision name="linear_bearing_carriage_collision">
       <origin xyz="0 0 -0.38" rpy="0 0 0"/>
@@ -150,6 +325,34 @@
       </geometry>
     </collision>
 
+    <visual name="carriage_top_plate">
+      <origin xyz="0 0 -0.330" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.155 0.125 0.018"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <visual name="front_bearing_sleeve">
+      <origin xyz="0 ${rail_y} -0.400" rpy="0 ${PI / 2.0} 0"/>
+      <geometry>
+        <cylinder radius="0.014" length="0.120"/>
+      </geometry>
+      <material name="aluminum"/>
+    </visual>
+    <visual name="rear_bearing_sleeve">
+      <origin xyz="0 ${-rail_y} -0.400" rpy="0 ${PI / 2.0} 0"/>
+      <geometry>
+        <cylinder radius="0.014" length="0.120"/>
+      </geometry>
+      <material name="aluminum"/>
+    </visual>
+    <visual name="carriage_belt_clamp">
+      <origin xyz="0 -0.130 -0.365" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.070 0.046 0.025"/>
+      </geometry>
+      <material name="chain_steel"/>
+    </visual>
     <visual name="pendulum_encoder_bracket">
       <origin xyz="0 0 -0.19" rpy="0 0 0"/>
       <geometry>
@@ -169,7 +372,42 @@
       <geometry>
         <cylinder radius="0.026" length="0.075"/>
       </geometry>
-      <material name="orange"/>
+      <material name="steel"/>
+    </visual>
+    <visual name="encoder_outer_disk">
+      <origin xyz="0 -0.034 0" rpy="${PI / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="0.038" length="0.010"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <visual name="encoder_inner_disk">
+      <origin xyz="0 -0.042 0" rpy="${PI / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="0.024" length="0.012"/>
+      </geometry>
+      <material name="aluminum"/>
+    </visual>
+    <visual name="pendulum_side_plate_left">
+      <origin xyz="0.032 -0.025 -0.180" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.012 0.018 0.245"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <visual name="pendulum_side_plate_right">
+      <origin xyz="-0.032 -0.025 -0.180" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.012 0.018 0.245"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <visual name="yellow_encoder_sensor">
+      <origin xyz="-0.040 -0.042 -0.045" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.016 0.014 0.030"/>
+      </geometry>
+      <material name="yellow"/>
     </visual>
   </link>
 
@@ -192,7 +430,7 @@
       <geometry>
         <cylinder radius="${pendulum_coupler_radius}" length="${pendulum_y_offset_abs}"/>
       </geometry>
-      <material name="orange"/>
+      <material name="steel"/>
     </visual>
     <collision name="shaft_coupler_collision">
       <origin xyz="0 ${pendulum_y_offset / 2.0} 0" rpy="${PI / 2.0} 0 0"/>
@@ -205,7 +443,7 @@
       <geometry>
         <cylinder radius="${pendulum_radius}" length="${pendulum_length}"/>
       </geometry>
-      <material name="red"/>
+      <material name="steel"/>
     </visual>
     <collision name="rod_collision">
       <origin xyz="0 ${pendulum_y_offset} ${-pendulum_length / 2.0}" rpy="0 0 0"/>
@@ -216,9 +454,9 @@
     <visual name="tip_marker">
       <origin xyz="0 ${pendulum_y_offset} ${-pendulum_length}" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.018"/>
+        <sphere radius="0.011"/>
       </geometry>
-      <material name="orange"/>
+      <material name="screw_dark"/>
     </visual>
   </link>
 
@@ -230,14 +468,14 @@
   </gazebo>
   <gazebo reference="cart_link">
     <material>
-      <ambient>0.08 0.32 0.95 1</ambient>
-      <diffuse>0.08 0.32 0.95 1</diffuse>
+      <ambient>0.18 0.18 0.18 1</ambient>
+      <diffuse>0.18 0.18 0.18 1</diffuse>
     </material>
   </gazebo>
   <gazebo reference="pendulum_link">
     <material>
-      <ambient>0.90 0.05 0.05 1</ambient>
-      <diffuse>0.90 0.05 0.05 1</diffuse>
+      <ambient>0.72 0.72 0.70 1</ambient>
+      <diffuse>0.72 0.72 0.70 1</diffuse>
     </material>
   </gazebo>
 

@@ -15,6 +15,13 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64, Float64MultiArray
 
 try:
+    from gz.msgs10.marker_pb2 import Marker as GzMarker
+    from gz.transport13 import Node as GzTransportNode
+except ImportError:  # pragma: no cover - optional Gazebo GUI marker support
+    GzMarker = None
+    GzTransportNode = None
+
+try:
     import numpy as np
     from scipy.linalg import solve_continuous_are
 except ImportError:  # pragma: no cover - optional runtime dependency
@@ -64,24 +71,36 @@ class SimSerialBridge(Node):
         self.declare_parameter("cart_mass_kg", 1.20)
         self.declare_parameter("pendulum_mass_kg", 0.20)
         self.declare_parameter("pendulum_com_m", 0.20)
+        self.declare_parameter("pendulum_length_m", 0.40)
+        self.declare_parameter("external_force_visual_hold_s", 0.65)
         self.declare_parameter("swing_gain", 2.70)
         self.declare_parameter("swing_centering_gain", 0.42)
         self.declare_parameter("swing_damping_gain", 0.12)
         self.declare_parameter("swing_kick_mps", 0.82)
         self.declare_parameter("swing_force_limit_n", 90.0)
-        self.declare_parameter("swing_min_top_passes_before_catch", 4)
-        self.declare_parameter("swing_min_energy_build_time_s", 6.0)
-        self.declare_parameter("swing_energy_ready_ratio", 0.82)
+        self.declare_parameter("swing_min_top_passes_before_catch", 1)
+        self.declare_parameter("swing_min_energy_build_time_s", 2.5)
+        self.declare_parameter("swing_energy_ready_ratio", 0.72)
         self.declare_parameter("swing_top_pass_angle_deg", 80.0)
-        self.declare_parameter("balance_capture_deg", 9.0)
-        self.declare_parameter("balance_capture_rate_rad_s", 1.0)
-        self.declare_parameter("balance_fallback_deg", 45.0)
-        self.declare_parameter("balance_capture_cart_pos_m", 0.30)
-        self.declare_parameter("balance_capture_cart_vel_mps", 1.4)
+        self.declare_parameter("balance_capture_deg", 10.0)
+        self.declare_parameter("balance_capture_rate_rad_s", 2.4)
+        self.declare_parameter("balance_fallback_deg", 70.0)
+        self.declare_parameter("balance_give_up_deg", 135.0)
+        self.declare_parameter("balance_capture_cart_pos_m", 0.34)
+        self.declare_parameter("balance_capture_cart_vel_mps", 2.2)
+        self.declare_parameter("balance_immediate_capture_deg", 1.0)
+        self.declare_parameter("balance_immediate_capture_cart_pos_m", 0.34)
+        self.declare_parameter("balance_immediate_capture_cart_vel_mps", 2.2)
+        self.declare_parameter("balance_auto_lock_enabled", True)
+        self.declare_parameter("balance_auto_lock_angle_deg", 3.0)
+        self.declare_parameter("balance_auto_lock_rate_rad_s", 2.4)
+        self.declare_parameter("balance_auto_lock_cart_pos_m", 0.34)
+        self.declare_parameter("balance_auto_lock_cart_vel_mps", 2.2)
+        self.declare_parameter("balance_auto_lock_time_s", 0.0)
         self.declare_parameter("catch_region_deg", 95.0)
         self.declare_parameter("catch_region_rate_rad_s", 14.0)
         self.declare_parameter("catch_force_limit_n", 95.0)
-        self.declare_parameter("balance_force_limit_n", 45.0)
+        self.declare_parameter("balance_force_limit_n", 60.0)
         self.declare_parameter("balance_use_lqr", False)
         self.declare_parameter("balance_assist_enabled", True)
         self.declare_parameter("balance_assist_angle_deg", 115.0)
@@ -121,6 +140,10 @@ class SimSerialBridge(Node):
         self.cart_mass = float(self.get_parameter("cart_mass_kg").value)
         self.pendulum_mass = float(self.get_parameter("pendulum_mass_kg").value)
         self.pendulum_com = float(self.get_parameter("pendulum_com_m").value)
+        self.pendulum_length = float(self.get_parameter("pendulum_length_m").value)
+        self.external_force_visual_hold_s = float(
+            self.get_parameter("external_force_visual_hold_s").value
+        )
         self.start_time = time.monotonic()
         self.swing_state = "CALC"
         self.swing_target_v = 0.0
@@ -129,6 +152,7 @@ class SimSerialBridge(Node):
         self.swing_top_passes = 0
         self.swing_top_pass_armed = True
         self.balance_request_pending = False
+        self.upright_stable_since = None
 
         self.swing_gain = float(self.get_parameter("swing_gain").value)
         self.swing_centering_gain = float(
@@ -163,11 +187,41 @@ class SimSerialBridge(Node):
         self.balance_fallback = math.radians(
             float(self.get_parameter("balance_fallback_deg").value)
         )
+        self.balance_give_up = math.radians(
+            float(self.get_parameter("balance_give_up_deg").value)
+        )
         self.balance_capture_cart_pos = float(
             self.get_parameter("balance_capture_cart_pos_m").value
         )
         self.balance_capture_cart_vel = float(
             self.get_parameter("balance_capture_cart_vel_mps").value
+        )
+        self.balance_immediate_capture_angle = math.radians(
+            float(self.get_parameter("balance_immediate_capture_deg").value)
+        )
+        self.balance_immediate_capture_cart_pos = float(
+            self.get_parameter("balance_immediate_capture_cart_pos_m").value
+        )
+        self.balance_immediate_capture_cart_vel = float(
+            self.get_parameter("balance_immediate_capture_cart_vel_mps").value
+        )
+        self.balance_auto_lock_enabled = bool(
+            self.get_parameter("balance_auto_lock_enabled").value
+        )
+        self.balance_auto_lock_angle = math.radians(
+            float(self.get_parameter("balance_auto_lock_angle_deg").value)
+        )
+        self.balance_auto_lock_rate = float(
+            self.get_parameter("balance_auto_lock_rate_rad_s").value
+        )
+        self.balance_auto_lock_cart_pos = float(
+            self.get_parameter("balance_auto_lock_cart_pos_m").value
+        )
+        self.balance_auto_lock_cart_vel = float(
+            self.get_parameter("balance_auto_lock_cart_vel_mps").value
+        )
+        self.balance_auto_lock_time_s = float(
+            self.get_parameter("balance_auto_lock_time_s").value
         )
         self.catch_region_angle = math.radians(
             float(self.get_parameter("catch_region_deg").value)
@@ -236,6 +290,7 @@ class SimSerialBridge(Node):
             self.get_parameter("motor_velocity_servo_d").value
         )
         self.effort_limit_n = float(self.get_parameter("effort_limit_n").value)
+        self.external_disturbance_torque_nm = 0.0
 
         self.cmd_pub = self.create_publisher(Float64, "/pendulum/cart_velocity_cmd", 10)
         self.effort_pub = self.create_publisher(Float64, "/pendulum/cart_force_cmd", 10)
@@ -246,6 +301,26 @@ class SimSerialBridge(Node):
         )
         self.state_pub = self.create_publisher(Float64MultiArray, "/pendulum/sim_state", 10)
         self.create_subscription(JointState, "joint_states", self._joint_state_cb, 10)
+        self.create_subscription(
+            Float64,
+            "/pendulum/external_disturbance_torque_cmd",
+            self._external_disturbance_torque_cb,
+            10,
+        )
+        self.gz_marker_node = None
+        self.external_force_marker_pub = None
+        self.external_force_marker_visible = False
+        self.external_force_marker_hold_until = 0.0
+        self.external_force_marker_last_force_n = 0.0
+        if GzTransportNode is not None and GzMarker is not None:
+            try:
+                self.gz_marker_node = GzTransportNode()
+                self.external_force_marker_pub = self.gz_marker_node.advertise(
+                    "/marker",
+                    GzMarker,
+                )
+            except Exception as exc:
+                self.get_logger().warning(f"Gazebo marker publisher unavailable: {exc}")
 
         self.lock = threading.Lock()
         self.cart_x_m = 0.0
@@ -315,7 +390,7 @@ class SimSerialBridge(Node):
                 + ", ".join(f"{gain:.2f}" for gain in self.balance_lqr_gain)
             )
 
-    def _swing_up_energy_command_locked(self, theta_top, dt):
+    def _swing_up_energy_command_locked(self, theta_top, dt, now):
         energy = self._energy(theta_top)
         target_energy = 2.0 * self.pendulum_mass * 9.81 * self.pendulum_com
 
@@ -333,6 +408,19 @@ class SimSerialBridge(Node):
         centering_force = self._swing_centering_force_locked(theta_top)
         if centering_force is not None:
             return self._force_to_command_hint(centering_force), centering_force
+
+        if self._upright_immediate_capture_ready_locked(theta_top) or (
+            self._upright_auto_lock_ready_locked(theta_top, now)
+        ):
+            self.x_center_m = clamp(
+                self.cart_x_m,
+                -self.rail_limit + 0.08,
+                self.rail_limit - 0.08,
+            )
+            self._set_mode_locked(MODE_BALANCE)
+            self.swing_state = "CALC"
+            force = self._balance_force_locked(theta_top, dt)
+            return self._force_to_command_hint(force), force
 
         # Jangan menangkap ayunan pertama. Biarkan swing-up mengumpulkan energi
         # beberapa kali dulu, lalu balance saat state sudah layak.
@@ -439,6 +527,66 @@ class SimSerialBridge(Node):
                         0.8 * self.pendulum_vel_radps + 0.2 * vel
                     )
 
+    def _external_disturbance_torque_cb(self, msg):
+        self.external_disturbance_torque_nm = float(msg.data)
+
+    def _publish_external_force_marker(self, force_n):
+        if self.external_force_marker_pub is None or GzMarker is None:
+            return
+        now = time.monotonic()
+        if abs(force_n) < 1e-6:
+            if now < self.external_force_marker_hold_until:
+                force_n = self.external_force_marker_last_force_n
+            else:
+                if self.external_force_marker_visible:
+                    marker = GzMarker()
+                    marker.ns = "pendulum_external_force"
+                    marker.id = 1
+                    marker.action = GzMarker.DELETE_MARKER
+                    self.external_force_marker_pub.publish(marker)
+                    self.external_force_marker_visible = False
+                return
+        else:
+            self.external_force_marker_last_force_n = force_n
+            self.external_force_marker_hold_until = (
+                now + self.external_force_visual_hold_s
+            )
+
+        if abs(force_n) < 1e-6:
+            if self.external_force_marker_visible:
+                marker = GzMarker()
+                marker.ns = "pendulum_external_force"
+                marker.id = 1
+                marker.action = GzMarker.DELETE_MARKER
+                self.external_force_marker_pub.publish(marker)
+                self.external_force_marker_visible = False
+            return
+
+        marker = GzMarker()
+        marker.ns = "pendulum_external_force"
+        marker.id = 1
+        marker.action = GzMarker.ADD_MODIFY
+        marker.type = GzMarker.ARROW
+        marker.parent = "linear_inverted_pendulum::pendulum_link"
+        marker.pose.position.x = 0.0
+        marker.pose.position.y = -0.20
+        marker.pose.position.z = -self.pendulum_length
+        marker.pose.orientation.w = 1.0 if force_n >= 0.0 else 0.0
+        marker.pose.orientation.z = 0.0 if force_n >= 0.0 else 1.0
+        marker.scale.x = clamp(abs(force_n) * 0.16, 0.18, 0.60)
+        marker.scale.y = 0.045
+        marker.scale.z = 0.045
+        marker.material.ambient.r = 1.0
+        marker.material.ambient.g = 0.38
+        marker.material.ambient.b = 0.0
+        marker.material.ambient.a = 1.0
+        marker.material.diffuse.r = 1.0
+        marker.material.diffuse.g = 0.42
+        marker.material.diffuse.b = 0.0
+        marker.material.diffuse.a = 1.0
+        self.external_force_marker_pub.publish(marker)
+        self.external_force_marker_visible = True
+
     def _serial_reader(self):
         buffer = bytearray()
         while self.serial_running:
@@ -477,6 +625,8 @@ class SimSerialBridge(Node):
                 packet_len = 26
             elif packet_type == 0x03:
                 packet_len = 6
+            elif packet_type == 0x04:
+                packet_len = 10
             else:
                 del buffer[:2]
                 continue
@@ -499,6 +649,8 @@ class SimSerialBridge(Node):
                 self._handle_gains_packet(packet)
             elif packet_type == 0x03:
                 self._handle_reset_packet()
+            elif packet_type == 0x04:
+                self._handle_external_force_packet(packet)
 
     def _handle_joystick_packet(self, packet):
         _, _, ax, _ay, _rx, _ry, buttons = struct.unpack("<BBhhhhH", packet[2:-2])
@@ -539,6 +691,15 @@ class SimSerialBridge(Node):
             f"K_X={gains[2]:.2f}, K_X_D={gains[3]:.2f}, K_X_INT={gains[4]:.2f}"
         )
 
+    def _handle_external_force_packet(self, packet):
+        _typ, _seq, force_n = struct.unpack("<BBf", packet[2:-2])
+        torque_nm = force_n * self.pendulum_length
+        with self.lock:
+            self.external_disturbance_torque_nm = torque_nm
+        self.get_logger().info(
+            f"External disturbance set: force={force_n:.3f} N, torque={torque_nm:.3f} Nm"
+        )
+
     def _handle_reset_packet(self):
         with self.lock:
             self._set_mode_locked(MODE_WAITING)
@@ -548,6 +709,7 @@ class SimSerialBridge(Node):
             self.motor_velocity_mps = 0.0
             self.prev_motor_velocity_error = 0.0
             self.motor_pwm = 0.0
+            self.external_disturbance_torque_nm = 0.0
             self.last_buttons = 0
             self.x_center_m = 0.0
             self.x_integral_cm_s = 0.0
@@ -580,6 +742,7 @@ class SimSerialBridge(Node):
                 self.rail_limit - 0.08,
             )
             self.balance_request_pending = False
+        self.upright_stable_since = None
 
     def _control_and_status_timer(self):
         now = time.monotonic()
@@ -597,7 +760,15 @@ class SimSerialBridge(Node):
                 self.velocity_error_integral = 0.0
                 self.prev_velocity_error = 0.0
 
-            hinge_effort = self._balance_assist_torque_locked(theta_top)
+            hinge_effort = (
+                self._balance_assist_torque_locked(theta_top)
+                + self.external_disturbance_torque_nm
+            )
+            external_force_n = (
+                self.external_disturbance_torque_nm / self.pendulum_length
+                if self.pendulum_length > 1e-6
+                else 0.0
+            )
             state = self._make_state_tuple_locked(theta_top)
 
         msg = Float64()
@@ -611,6 +782,7 @@ class SimSerialBridge(Node):
         hinge_effort_msg = Float64()
         hinge_effort_msg.data = float(hinge_effort)
         self.hinge_effort_pub.publish(hinge_effort_msg)
+        self._publish_external_force_marker(external_force_n)
 
         state_msg = Float64MultiArray()
         state_msg.data = list(state[1:])
@@ -642,7 +814,7 @@ class SimSerialBridge(Node):
             return 2.5 * (target - self.cart_x_m) - 0.20 * self.cart_v_mps, None
 
         if self.mode == MODE_SWING_UP:
-            return self._swing_up_energy_command_locked(theta_top, dt)
+            return self._swing_up_energy_command_locked(theta_top, dt, now)
 
         if self.mode == MODE_BALANCE:
             if self._lost_balance_locked(theta_top):
@@ -737,6 +909,32 @@ class SimSerialBridge(Node):
             and abs(self.cart_v_mps) < self.balance_capture_cart_vel
         )
 
+    def _upright_auto_lock_ready_locked(self, theta_top, now):
+        if not self.balance_auto_lock_enabled:
+            self.upright_stable_since = None
+            return False
+
+        stable = (
+            abs(theta_top) < self.balance_auto_lock_angle
+            and abs(self.pendulum_vel_radps) < self.balance_auto_lock_rate
+            and abs(self.cart_x_m) < self.balance_auto_lock_cart_pos
+            and abs(self.cart_v_mps) < self.balance_auto_lock_cart_vel
+        )
+        if stable:
+            if self.upright_stable_since is None:
+                self.upright_stable_since = now
+            return (now - self.upright_stable_since) >= self.balance_auto_lock_time_s
+
+        self.upright_stable_since = None
+        return False
+
+    def _upright_immediate_capture_ready_locked(self, theta_top):
+        return (
+            abs(theta_top) < self.balance_immediate_capture_angle
+            and abs(self.cart_x_m) < self.balance_immediate_capture_cart_pos
+            and abs(self.cart_v_mps) < self.balance_immediate_capture_cart_vel
+        )
+
     def _update_swing_top_passes_locked(self, theta_top):
         if abs(theta_top) > self.swing_top_pass_angle:
             self.swing_top_pass_armed = True
@@ -758,7 +956,7 @@ class SimSerialBridge(Node):
 
     def _lost_balance_locked(self, theta_top):
         return (
-            abs(theta_top) > self.balance_fallback
+            abs(theta_top) > self.balance_give_up
             or abs(self.cart_x_m) > (self.rail_limit + 0.02)
         )
 

@@ -1,0 +1,4 @@
+workspace,positive_last_survived_force_n,positive_first_failed_force_n,positive_failure_reason,negative_last_survived_force_n,negative_first_failed_force_n,negative_failure_reason,protocol_note
+ros2_pendulum_ws,8.0,10.0,angle_limit,6.0,8.0,recovery_rail_limit,0.20s external tip-force impulse after BALANCE is stable; impulse is set back to 0 N automatically; survived means returned to BALANCE within 5s recovery window
+pendulum_real_ws,6.0,8.0,recovery_angle_limit,6.0,8.0,recovery_rail_limit,0.20s external tip-force impulse after BALANCE is stable; impulse is set back to 0 N automatically; survived means returned to BALANCE within 5s recovery window
+pendulum_pid_ws,6.0,8.0,recovery_rail_limit,6.0,8.0,recovery_rail_limit,0.20s external tip-force impulse after BALANCE is stable; impulse is set back to 0 N automatically; survived means returned to BALANCE within 5s recovery window

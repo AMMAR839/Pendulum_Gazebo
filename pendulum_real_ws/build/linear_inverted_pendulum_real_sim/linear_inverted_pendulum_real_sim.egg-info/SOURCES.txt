@@ -15,3 +15,4 @@ linear_inverted_pendulum_real_sim.egg-info/top_level.txt
 linear_inverted_pendulum_real_sim.egg-info/zip-safe
 resource/linear_inverted_pendulum_real_sim
 urdf/linear_inverted_pendulum_real.urdf.xacro
+worlds/pendulum_close_camera.sdf

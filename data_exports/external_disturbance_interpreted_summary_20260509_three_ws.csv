@@ -1,0 +1,4 @@
+workspace,worst_direction,last_survived_force_n,critical_tested_force_n,critical_torque_nm,fall_reason,protocol_note
+ros2_pendulum_ws,positive,2.1000,2.1500,0.860000,rail_limit,3s external tip force then 2s recovery; failed means angle >= 18 deg or cart reaches 38 cm rail guard; critical value is the smallest tested force that failed
+pendulum_real_ws,positive,2.0000,2.0500,0.820000,rail_limit,3s external tip force then 2s recovery; failed means angle >= 18 deg or cart reaches 38 cm rail guard; critical value is the smallest tested force that failed
+pendulum_pid_ws,positive,2.0000,2.0500,0.820000,rail_limit,3s external tip force then 2s recovery; failed means angle >= 18 deg or cart reaches 38 cm rail guard; critical value is the smallest tested force that failed

@@ -16,6 +16,8 @@ COLOR_REC_ON = (220, 60, 60)
 COLOR_REC_OFF = (80, 80, 90)
 COLOR_UDP_ON = (60, 180, 220)
 COLOR_UDP_OFF = (80, 80, 90)
+COLOR_EXT_ON = (230, 145, 55)
+COLOR_EXT_OFF = (80, 80, 90)
 COLOR_BUTTON = (60, 120, 180)
 COLOR_BUTTON_HOVER = (80, 150, 220)
 COLOR_BUTTON_DISABLED = (60, 60, 70)
@@ -259,9 +261,11 @@ class PendulumGUI:
 
         rec_x = int(round(self.MAIN_WIDTH - margin - topbtn_w))
         udp_x = int(round(rec_x - gap - topbtn_w))
+        ext_x = int(round(udp_x - gap - topbtn_w))
 
         self.btn_udp = Button(udp_x, top_y, topbtn_w, topbtn_h, "UDP OFF", color_on=COLOR_UDP_ON, color_off=COLOR_UDP_OFF)
         self.btn_record = Button(rec_x, top_y, topbtn_w, topbtn_h, "REC OFF", color_on=COLOR_REC_ON, color_off=COLOR_REC_OFF)
+        self.btn_external_force = Button(ext_x, top_y, topbtn_w, topbtn_h, "EXT OFF", color_on=COLOR_EXT_ON, color_off=COLOR_EXT_OFF)
 
         # mode buttons under status on left
         mode_w = int(round(topbtn_w * 0.9))
@@ -321,6 +325,17 @@ class PendulumGUI:
     def set_udp_text(self, is_udp: bool):
         self.btn_udp.text = "UDP ON" if is_udp else "UDP OFF"
 
+    def set_external_force_enabled(self, enabled: bool):
+        self.btn_external_force.enabled = enabled
+        if not enabled:
+            self.btn_external_force.text = "EXT N/A"
+
+    def set_external_force_text(self, is_active: bool, force_n: float = 0.0):
+        if not self.btn_external_force.enabled:
+            self.btn_external_force.text = "EXT N/A"
+            return
+        self.btn_external_force.text = "EXT ON" if is_active else "EXT OFF"
+
     def set_running_ui_lock(self, is_running: bool):
         for inp in self.inputs.values():
             inp.enabled = not is_running
@@ -332,6 +347,7 @@ class PendulumGUI:
         self.btn_reset.update_hover(mouse_pos)
         self.btn_record.update_hover(mouse_pos)
         self.btn_udp.update_hover(mouse_pos)
+        self.btn_external_force.update_hover(mouse_pos)
         self.btn_mode_2d.update_hover(mouse_pos)
         self.btn_mode_graph.update_hover(mouse_pos)
 
@@ -369,6 +385,9 @@ class PendulumGUI:
                 elif self.btn_udp.is_clicked(mouse_pos):
                     is_udp = callbacks["toggle_udp"]()
                     self.set_udp_text(is_udp)
+                elif self.btn_external_force.is_clicked(mouse_pos):
+                    is_ext = callbacks["toggle_external_force"]()
+                    self.set_external_force_text(is_ext)
                 else:
                     idx = self.mode_group.handle_click(mouse_pos)
                     if idx is not None:
@@ -394,6 +413,7 @@ class PendulumGUI:
         self.screen.blit(status_surf, (55, 18))
 
         # top buttons
+        self.btn_external_force.draw(self.screen, self.font_medium)
         self.btn_record.draw(self.screen, self.font_medium)
         self.btn_udp.draw(self.screen, self.font_medium)
 
@@ -436,6 +456,12 @@ class PendulumGUI:
         if (not is_running) and context.get("reset_ack", False):
             reset_surf = self.font_small.render("✓ System Ready", True, COLOR_STATUS_RUN)
             self.screen.blit(reset_surf, (self.MAIN_WIDTH + 15, int(self.WINDOW_HEIGHT * 0.81)))
+
+        if context.get("external_force_active", False):
+            force_n = context.get("external_force_n", 0.0)
+            ext_text = f"External Force: {force_n:+.2f} N"
+            ext_surf = self.font_small.render(ext_text, True, COLOR_EXT_ON)
+            self.screen.blit(ext_surf, (self.MAIN_WIDTH + 15, int(self.WINDOW_HEIGHT * 0.84)))
 
         # bottom info
         cmX = context["cmX"]

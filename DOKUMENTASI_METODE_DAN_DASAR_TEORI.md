@@ -960,6 +960,60 @@ Untuk laporan, data ini bisa dipakai untuk menunjukkan bahwa:
    paling kecil, tetapi kesimpulan akhir tetap perlu diuji dengan beberapa run
    jika ingin menjadi klaim performa final.
 
+### 17.5 Patokan Awal Swing-Up untuk Alat Real
+
+Data gaya swing-up dapat dijadikan patokan awal untuk alat real jika klaimnya
+ditulis sebagai envelope berbasis model dan energi, bukan sebagai hasil ukur
+gaya motor fisik. Dasarnya adalah:
+
+1. Metode swing-up menghitung selisih energi pendulum terhadap energi target.
+2. Runtime menunjukkan energi pendulum naik hingga mendekati energi posisi
+   tegak sebelum balance mengambil alih.
+3. Force limit dan command motor memberi batas kebutuhan actuator yang bisa
+   dibandingkan dengan log alat real.
+4. Validasi real tetap harus memakai data alat asli seperti sudut pendulum,
+   posisi cart, kecepatan cart, PWM atau arus motor, dan keberhasilan masuk
+   balance.
+
+Setelah model visual baru, ringkasan patokan swing-up dibuat di:
+
+```text
+data_exports/swing_up_real_reference_summary_20260510.csv
+```
+
+Ringkasan utama:
+
+| Workspace | Durasi swing-up | Mean abs effort | P95/peak effort | Abs impulse | Positive cmd-work | Energy ready ratio | Patokan command real |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| `ros2_pendulum_ws` | 8.194 s | 56.617 N | 90.000 / 92.084 N | 466.727 N.s | 102.424 J | 0.992 | 25.481 / 86.748 / 126.000 cm/s |
+| `pendulum_real_ws` | 8.126 s | 83.011 N | 145.000 / 145.000 N | 692.949 N.s | 124.536 J | 0.993 | 23.774 / 59.950 / 203.000 cm/s; PWM mean/P95 7686 / 14549 |
+| `pendulum_pid_ws` | 8.465 s | 84.991 N | 145.000 / 145.000 N | 722.098 N.s | 136.866 J | 0.994 | 25.032 / 62.467 / 203.000 cm/s; PWM mean/P95 7906 / 15024 |
+
+Interpretasi:
+
+1. `energy_ready_ratio` sekitar `0.99` menunjukkan swing-up berhasil
+   mengumpulkan energi sampai hampir sama dengan energi posisi tegak.
+2. `pendulum_real_ws` dan `pendulum_pid_ws` menjadi patokan real-style utama
+   karena memakai force limit `+/-145 N`, model deadband PWM, dan time constant
+   motor.
+3. `ros2_pendulum_ws` tetap berguna sebagai pembanding simulasi, tetapi patokan
+   real yang lebih kuat adalah workspace real-style.
+4. Angka N tetap disebut effort cart model Gazebo. Untuk mengubahnya menjadi
+   gaya motor aktual, perlu kalibrasi actuator atau sensor gaya/arus pada alat
+   asli.
+
+Kalimat laporan yang aman:
+
+```text
+Gaya swing-up digunakan sebagai patokan awal actuator real melalui envelope
+hasil simulasi. Controller berbasis energi menaikkan energi pendulum hingga
+sekitar 99% energi referensi posisi tegak, dengan batas effort cart model
+sebesar +/-90 N pada ros2_pendulum_ws dan +/-145 N pada pendulum_real_ws serta
+pendulum_pid_ws. Karena belum digunakan sensor gaya motor fisik, nilai force
+Gazebo tidak diklaim sebagai gaya motor aktual, tetapi digunakan sebagai
+referensi command envelope yang harus divalidasi terhadap log alat asli.
+```
+
 ## 18. Hal yang Harus Dijelaskan di Laporan
 
 Untuk laporan, struktur yang disarankan:
@@ -992,7 +1046,9 @@ Untuk laporan, struktur yang disarankan:
 7. Pembahasan:
    jelaskan kenapa swing-up dan balance dipisah, kenapa balance tidak boleh
    aktif terlalu awal, kenapa PID dibuat workspace terpisah, dan kenapa assist
-   engsel harus disebut sebagai bantuan simulasi.
+   engsel harus disebut sebagai bantuan simulasi. Jelaskan juga bahwa gaya
+   swing-up menjadi patokan awal real pada level energi dan command envelope,
+   bukan klaim gaya motor fisik tanpa kalibrasi.
 
 8. Kesimpulan:
    jelaskan workspace mana yang menjadi demo awal, baseline Manual Book, dan

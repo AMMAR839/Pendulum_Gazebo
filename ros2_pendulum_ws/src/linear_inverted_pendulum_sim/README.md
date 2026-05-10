@@ -44,6 +44,133 @@ Launch ini membuat pseudo serial di:
 /tmp/pendulum_sim_serial
 ```
 
+## Model visual lebih detail
+
+Model Gazebo sekarang dibuat lebih mirip trainer linear inverted pendulum pada
+gambar referensi. Perubahan ini hanya visual/cosmetic; nama joint, limit rail,
+massa utama, dan topic kontrol tetap sama.
+
+Detail yang ditambahkan:
+
+- Base plate hitam dengan side extrusion dan baut.
+- Dua linear rail dengan profile gelap dan shaft metal.
+- Chain/belt track dengan link berulang, pulley kiri/kanan, dan motor drive.
+- Carriage lebih detail dengan bearing sleeve, belt clamp, encoder disk, side plate, dan sensor kecil.
+- Pendulum rod dibuat metal seperti batang asli, bukan batang merah tebal.
+
+File visual yang sama dipakai di `ros2_pendulum_ws`, `pendulum_real_ws`, dan
+`pendulum_pid_ws`, sehingga tampilan ketiga workspace konsisten.
+
+## Jalankan dashboard split otomatis
+
+Cara ini menjalankan Gazebo di kiri dan grafik live di kanan seperti screenshot,
+tanpa perlu membuka `main.py` terpisah:
+
+```bash
+cd /home/ammar/Documents/Pendulum
+python3 pendulum_gazebo_plot_dashboard.py --workspace ros2
+```
+
+Workspace lain memakai skrip yang sama:
+
+```bash
+python3 pendulum_gazebo_plot_dashboard.py --workspace real
+python3 pendulum_gazebo_plot_dashboard.py --workspace pid
+```
+
+## Gaya eksternal setelah balance
+
+Dashboard memberi gaya eksternal hanya setelah alur otomatis mencapai
+`BALANCE` dan state sudah stabil. Setelah impulse selesai, gaya otomatis
+dikembalikan ke `0 N`.
+
+Contoh memberi gaya eksternal sekali saja:
+
+```bash
+cd /home/ammar/Documents/Pendulum
+python3 pendulum_gazebo_plot_dashboard.py --workspace ros2 --external-impulse-force 2.0 --external-impulse-duration 0.20
+```
+
+Untuk arah sebaliknya, pakai nilai negatif:
+
+```bash
+python3 pendulum_gazebo_plot_dashboard.py --workspace ros2 --external-impulse-force -2.0 --external-impulse-duration 0.20
+```
+
+Cari gaya impulse maksimal yang masih bisa ditahan:
+
+```bash
+python3 pendulum_gazebo_plot_dashboard.py --workspace ros2 --find-max-external
+```
+
+Hasil uji dashboard 2026-05-10 dengan impulse `0.20 s` setelah `BALANCE`:
+
+| Workspace | Arah positif | Gagal positif | Arah negatif | Gagal negatif |
+| --- | ---: | ---: | ---: | ---: |
+| `ros2_pendulum_ws` | `8 N` survive | `10 N` gagal | `6 N` survive | `8 N` gagal |
+| `pendulum_real_ws` | `6 N` survive | `8 N` gagal | `6 N` survive | `8 N` gagal |
+| `pendulum_pid_ws` | `6 N` survive | `8 N` gagal | `6 N` survive | `8 N` gagal |
+
+Ringkasan CSV: `data_exports/external_impulse_threshold_summary_20260510_dashboard.csv`.
+
+## Tuning balance lebih dominan
+
+Pada 2026-05-10, balance gate disetel supaya syarat sudut tetap
+`-10 deg < theta < 10 deg`, tetapi swing-up tidak terlalu dominan setelah
+pendulum sudah tegak. Caranya, balance diberi kesempatan setelah top pass
+pertama, waktu tunggu swing-up dipersingkat, lalu ditambah auto-lock saat
+pendulum sudah dekat posisi atas:
+
+- `balance_capture_deg`: `9 deg` -> `10 deg`.
+- `balance_capture_rate_rad_s`: `1.0` -> `2.4`.
+- `balance_fallback_deg`: `45 deg` -> `70 deg`.
+- `balance_give_up_deg`: `135 deg`, supaya mode tidak cepat balik ke `SWING_UP`.
+- `balance_force_limit_n`: `45 N` -> `60 N`.
+- `swing_min_top_passes_before_catch`: diturunkan ke `1`.
+- `swing_min_energy_build_time_s`: diturunkan ke `2.5 s`.
+- `swing_energy_ready_ratio`: diturunkan ke `0.72`.
+- `balance_immediate_capture_deg`: `1 deg`, supaya angle yang sudah hampir `0 deg` langsung masuk `BALANCE`.
+- `balance_immediate_capture_cart_pos_m`: `0.34 m`.
+- `balance_immediate_capture_cart_vel_mps`: `2.2 m/s`.
+- `balance_auto_lock_angle_deg`: `3 deg`.
+- `balance_auto_lock_rate_rad_s`: `2.4`.
+- `balance_auto_lock_cart_pos_m`: `0.34 m`.
+- `balance_auto_lock_cart_vel_mps`: `2.2 m/s`.
+- `balance_auto_lock_time_s`: `0.0 s`.
+
+Validasi headless 28 detik setelah tuning:
+
+| Workspace | Sampel SWING_UP | Sampel BALANCE | Mode switch | Swing setelah balance | Phase terakhir |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `ros2_pendulum_ws` | `210` | `342` | `1` | `0` | `BALANCE` |
+| `pendulum_real_ws` | `116` | `435` | `1` | `0` | `BALANCE` |
+| `pendulum_pid_ws` | `158` | `389` | `1` | `0` | `BALANCE` |
+
+Ringkasan CSV: `data_exports/balance_immediate_capture_validation_summary_20260510.csv`.
+
+Validasi ulang setelah model visual detail ditambahkan tetap menunjukkan tidak
+ada `SWING_UP` lagi setelah pertama kali masuk `BALANCE`:
+
+| Workspace | First BALANCE | Swing setelah balance | Swing force min/max | Swing force abs mean | Balance force abs mean |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `ros2_pendulum_ws` | `11.212 s` | `0` | `-90.000..92.084 N` | `56.617 N` | `0.485 N` |
+| `pendulum_real_ws` | `11.134 s` | `0` | `-145.000..145.000 N` | `83.011 N` | `0.303 N` |
+| `pendulum_pid_ws` | `11.535 s` | `0` | `-145.000..145.000 N` | `84.991 N` | `0.361 N` |
+
+Ringkasan CSV: `data_exports/post_visual_balance_validation_summary_20260510.csv`.
+
+Catatan laporan: nilai `cart_force_cmd_n` / `cart_joint_effort_cmd_n` adalah
+perintah effort joint cart di Gazebo. Nilai ini boleh dipakai untuk membandingkan
+workspace simulasi, tetapi jangan ditulis sebagai gaya motor fisik alat asli
+tanpa kalibrasi motor/driver/sensor gaya.
+
+Jika ada Gazebo lama yang masih aktif dan window menjadi bentrok, hentikan dulu:
+
+```bash
+pkill -f "ros2 launch linear_inverted_pendulum"
+pkill -f "gz sim"
+```
+
 ## Hubungkan ke GUI Python lama
 
 Terminal baru:
@@ -90,22 +217,29 @@ berarti pendulum berada di bawah.
 Mode `SINUS` adalah mode test osilasi cart. Mode `SWING UP` memakai kontrol
 energi, bukan sinus fixed, meskipun hasil gerak cart tetap terlihat berayun.
 
-## Kenapa pendulum belum bisa tegak stabil
+## Kenapa balance bisa berganti-ganti
 
-Masalah utamanya bukan hanya visual Gazebo, tetapi transisi kontrol dari
-`SWING UP` ke `BALANCING` masih sensitif. Swing-up sudah bisa memberi
-energi ke pendulum, tetapi balance hanya boleh mengambil alih kalau kondisi
-capture terpenuhi:
+Kalau pendulum secara visual sudah tegak tetapi mode masih `SWING UP`, masalah
+utamanya ada di transisi kontrol. Swing-up sudah berhasil memberi energi, tetapi
+bridge hanya boleh memberi alih ke `BALANCING` kalau kondisi capture terpenuhi:
 
-- Sudut harus dekat atas: `abs(theta_top) < 26 deg`.
-- Kecepatan sudut tidak boleh terlalu besar: `abs(theta_dot) < 3.5 rad/s`.
-- Cart harus masih cukup dekat tengah: `abs(x) < 0.24 m`.
-- Kecepatan cart harus tidak terlalu besar: `abs(x_dot) < 1.30 m/s`.
+- Sudut harus dekat atas: `abs(theta_top) < 10 deg`.
+- Kecepatan sudut tidak boleh terlalu besar: `abs(theta_dot) < 2.4 rad/s`.
+- Cart harus masih cukup dekat tengah: `abs(x) < 0.34 m`.
+- Kecepatan cart harus tidak terlalu besar: `abs(x_dot) < 2.2 m/s`.
 
-Kalau batang lewat dekat atas tetapi masih terlalu cepat, mode tidak masuk
-capture balance. Kalau mode balance dipaksa terlalu awal dengan tombol `A`,
-controller langsung bekerja pada kondisi yang belum bisa ditahan, lalu jatuh
-dan otomatis kembali ke `SWING UP` saat sudut sudah melewati batas fallback.
+Sekarang ada tambahan immediate capture dan auto-lock: bila mode masih
+`SWING UP`, tetapi pendulum sudah sangat dekat tegak (`1 deg`), bridge langsung
+mengalihkan mode ke `BALANCE`. Kalau belum sedekat itu, auto-lock tetap akan
+mengambil alih pada area `3 deg` selama cart masih aman. Jadi kondisi seperti
+screenshot `angle=0.00 deg` tidak dibiarkan tetap lama di `SWING`.
+
+Kalau batang lewat dekat atas tetapi masih terlalu cepat, mode belum masuk
+capture balance. Setelah sudah masuk `BALANCE`, bridge sekarang tetap memberi
+kesempatan ke controller balance untuk bekerja sampai sudut benar-benar jauh
+(`135 deg`) atau cart keluar batas rail. Jadi `SWING UP` hanya kembali dipakai
+kalau pendulum sudah dianggap jatuh, bukan saat baru sedikit keluar dari area
+tegak.
 
 Pada checkout aktif sekarang, workspace ini sudah dituning lebih dekat ke gaya
 real-style: force limit dibuat lebih rendah, capture dibuat lebih ketat, dan
@@ -124,14 +258,25 @@ simulasi. Kalau ingin kembali ke model pendulum pasif, set
 Parameter tuning utama ada di `sim_serial_bridge.py`:
 
 ```python
-self.declare_parameter("balance_capture_deg", 9.0)
-self.declare_parameter("balance_capture_rate_rad_s", 1.0)
-self.declare_parameter("balance_capture_cart_pos_m", 0.30)
-self.declare_parameter("balance_capture_cart_vel_mps", 1.4)
+self.declare_parameter("balance_capture_deg", 10.0)
+self.declare_parameter("balance_capture_rate_rad_s", 2.4)
+self.declare_parameter("balance_fallback_deg", 70.0)
+self.declare_parameter("balance_give_up_deg", 135.0)
+self.declare_parameter("balance_capture_cart_pos_m", 0.34)
+self.declare_parameter("balance_capture_cart_vel_mps", 2.2)
+self.declare_parameter("balance_immediate_capture_deg", 1.0)
+self.declare_parameter("balance_immediate_capture_cart_pos_m", 0.34)
+self.declare_parameter("balance_immediate_capture_cart_vel_mps", 2.2)
+self.declare_parameter("balance_auto_lock_enabled", True)
+self.declare_parameter("balance_auto_lock_angle_deg", 3.0)
+self.declare_parameter("balance_auto_lock_rate_rad_s", 2.4)
+self.declare_parameter("balance_auto_lock_cart_pos_m", 0.34)
+self.declare_parameter("balance_auto_lock_cart_vel_mps", 2.2)
+self.declare_parameter("balance_auto_lock_time_s", 0.0)
 self.declare_parameter("catch_region_deg", 95.0)
 self.declare_parameter("catch_region_rate_rad_s", 14.0)
 self.declare_parameter("catch_force_limit_n", 95.0)
-self.declare_parameter("balance_force_limit_n", 45.0)
+self.declare_parameter("balance_force_limit_n", 60.0)
 self.declare_parameter("balance_use_lqr", False)
 self.declare_parameter("balance_assist_enabled", True)
 self.declare_parameter("balance_assist_angle_deg", 115.0)

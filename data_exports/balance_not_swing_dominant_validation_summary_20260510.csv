@@ -1,0 +1,4 @@
+workspace,swing_up_samples,balance_samples,last_phase,balance_capture_deg,swing_min_top_passes_before_catch,swing_min_energy_build_time_s,swing_energy_ready_ratio,validation_note
+ros2_pendulum_ws,233,319,BALANCE,10.0,1,2.5,0.72,28s headless capture; balance remains more frequent than swing-up while capture stays within +-10 deg
+pendulum_real_ws,243,310,BALANCE,10.0,1,2.5,0.72,28s headless capture; balance remains more frequent than swing-up while capture stays within +-10 deg
+pendulum_pid_ws,194,358,BALANCE,10.0,1,2.5,0.72,28s headless capture; balance remains more frequent than swing-up while capture stays within +-10 deg

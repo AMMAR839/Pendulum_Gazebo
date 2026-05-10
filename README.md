@@ -252,6 +252,31 @@ Kapan dipakai:
 | Force limit | Lebih besar | Lebih rendah/real-style | Lebih rendah/real-style |
 | Assist engsel | Ada | Ada, untuk stabilitas simulasi | Ada, untuk stabilitas simulasi |
 
+## Patokan gaya swing-up untuk real
+
+Gaya swing-up dari simulasi bisa dipakai sebagai patokan awal alat real, tetapi
+posisinya harus jelas: angka `cart_force_cmd_n` adalah effort cart pada model
+Gazebo, bukan hasil ukur gaya motor fisik. Agar tetap bisa
+dipertanggungjawabkan sebagai patokan real, repo ini menyediakan ringkasan
+envelope swing-up yang tidak hanya melihat rata-rata force, tetapi juga durasi,
+RMS/P95/peak effort, impulse, estimasi kerja dari command, kenaikan energi
+pendulum, command kecepatan cart, dan PWM ekuivalen untuk workspace real-style.
+
+File utama:
+
+- `data_exports/SWING_UP_REAL_REFERENCE.md`: narasi laporan dan batas klaim.
+- `data_exports/swing_up_real_reference_summary_20260510.csv`: ringkasan terbaru
+  setelah validasi model visual.
+- `data_exports/build_swing_up_real_reference.py`: generator ringkasan.
+
+Klaim yang aman untuk laporan:
+
+```text
+Simulasi digunakan sebagai patokan awal kebutuhan energi, durasi swing-up, dan
+envelope command actuator. Nilai force Gazebo belum diklaim sebagai gaya motor
+fisik sampai dibandingkan dengan log alat asli.
+```
+
 ## Build semua workspace
 
 ```bash
@@ -266,6 +291,41 @@ colcon build --symlink-install
 cd /home/ammar/Documents/Pendulum/pendulum_pid_ws
 colcon build --symlink-install
 ```
+
+## Dashboard dengan gaya eksternal impulse
+
+Dashboard `pendulum_gazebo_plot_dashboard.py` bisa menjalankan Gazebo, grafik
+live, auto homing/swing/balance, lalu memberi gaya eksternal sekali saja
+sebagai impulse. Gaya eksternal ini adalah gaya ujung pendulum di simulasi; di
+bridge dikonversi menjadi torsi engsel, bukan gaya motor asli.
+
+Contoh memberi impulse 2 N selama 0.20 s:
+
+```bash
+cd /home/ammar/Documents/Pendulum
+python3 pendulum_gazebo_plot_dashboard.py --workspace ros2 --external-impulse-force 2.0 --external-impulse-duration 0.20
+python3 pendulum_gazebo_plot_dashboard.py --workspace real --external-impulse-force 2.0 --external-impulse-duration 0.20
+python3 pendulum_gazebo_plot_dashboard.py --workspace pid --external-impulse-force 2.0 --external-impulse-duration 0.20
+```
+
+Gunakan nilai negatif untuk dorongan arah sebaliknya, misalnya
+`--external-impulse-force -2.0`.
+
+Untuk mencari gaya impulse maksimum yang masih bisa dipertahankan:
+
+```bash
+python3 pendulum_gazebo_plot_dashboard.py \
+  --workspace ros2 \
+  --find-max-external \
+  --external-impulse-duration 0.20 \
+  --external-max-forces 0.5,1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0,8.0,10.0
+```
+
+Output pentingnya:
+
+- `gaya impulse aman terakhir`: gaya terbesar yang masih kembali stabil.
+- `gaya gagal pertama`: gaya terkecil di daftar uji yang membuat keluar balance,
+  sudut melewati batas, atau cart menyentuh batas rail.
 
 ## Verifikasi cepat
 

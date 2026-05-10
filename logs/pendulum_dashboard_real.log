@@ -1,0 +1,25 @@
+[INFO] [launch]: All log files can be found below /home/ammar/.ros/log/2026-05-10-12-05-11-396383-ammar-Swift-SF314-43-164532
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: Gazebo Transport partition: pendulum_164532
+[INFO] [gazebo-1]: process started with pid [164606]
+[INFO] [robot_state_publisher-2]: process started with pid [164607]
+[INFO] [create-3]: process started with pid [164608]
+[INFO] [parameter_bridge-4]: process started with pid [164609]
+[INFO] [real_serial_bridge-5]: process started with pid [164611]
+[robot_state_publisher-2] [INFO] [1778389511.827766975] [robot_state_publisher]: Robot initialized
+[create-3] [INFO] [1778389511.834539893] [ros_gz_sim]: Requesting list of world names.
+[parameter_bridge-4] [INFO] [1778389511.855354624] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1778389511.856812152] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/empty/model/linear_inverted_pendulum/joint_state (gz.msgs.Model) -> /world/empty/model/linear_inverted_pendulum/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1778389511.859908674] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/linear_inverted_pendulum/joint/cart_slider/cmd_force (std_msgs/msg/Float64) -> /model/linear_inverted_pendulum/joint/cart_slider/cmd_force (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1778389511.861097519] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force (std_msgs/msg/Float64) -> /model/linear_inverted_pendulum/joint/pendulum_hinge/cmd_force (gz.msgs.Double)] (Lazy 0)
+[real_serial_bridge-5] [INFO] [1778389512.466728236] [pendulum_real_serial_bridge]: Pseudo serial ready at /tmp/pendulum_real_dashboard_serial. Run the GUI with PENDULUM_PORT pointing there.
+[real_serial_bridge-5] [INFO] [1778389512.468261218] [pendulum_real_serial_bridge]: Manual-book motor model: deadband=3212 PWM, slope=189.1 PWM/(cm/s), tau=0.40s
+[real_serial_bridge-5] [INFO] [1778389512.469767158] [pendulum_real_serial_bridge]: Real-like force caps: swing=145.0 N, catch=95.0 N, balance=60.0 N, absolute=150.0 N
+[create-3] [INFO] [1778389512.489055299] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1778389512.501136043] [ros_gz_sim]: Entity creation successful.
+[INFO] [create-3]: process has finished cleanly [pid 164608]
+[gazebo-1] [1;33mWarning [parser_urdf.cc:1220][0m Attribute value string not set
+[gazebo-1] [1;33mWarning [parser_urdf.cc:1220][0m Attribute value string not set
+[gazebo-1] [1;33mWarning [parser_urdf.cc:1220][0m Attribute value string not set
+[parameter_bridge-4] [INFO] [1778389514.084046233] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[real_serial_bridge-5] [INFO] [1778389514.145087808] [pendulum_real_serial_bridge]: External disturbance set: force=0.000 N, torque=0.000 Nm

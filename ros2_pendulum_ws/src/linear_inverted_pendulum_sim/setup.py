@@ -12,6 +12,7 @@ setup(
         (f"share/{package_name}", ["package.xml", "README.md"]),
         (f"share/{package_name}/launch", glob("launch/*.launch.py")),
         (f"share/{package_name}/urdf", glob("urdf/*.xacro")),
+        (f"share/{package_name}/worlds", glob("worlds/*.sdf")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
