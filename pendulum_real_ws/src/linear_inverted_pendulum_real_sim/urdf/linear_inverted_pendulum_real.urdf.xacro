@@ -20,9 +20,11 @@
   <xacro:property name="pendulum_length" value="0.40"/>
   <xacro:property name="pendulum_radius" value="0.004"/>
   <xacro:property name="pendulum_mass" value="0.20"/>
-  <xacro:property name="pendulum_y_offset" value="-0.20"/>
-  <xacro:property name="pendulum_y_offset_abs" value="0.20"/>
+  <xacro:property name="pendulum_y_offset" value="-0.240"/>
+  <xacro:property name="pendulum_y_offset_abs" value="0.240"/>
   <xacro:property name="pendulum_coupler_radius" value="0.006"/>
+  <xacro:property name="pendulum_hinge_z_offset" value="-0.305"/>
+  <xacro:property name="initial_pendulum_joint_pitch" value="$(optenv PENDULUM_INITIAL_PENDULUM_JOINT_PITCH 0.0)"/>
 
   <material name="black">
     <color rgba="0.02 0.025 0.03 1"/>
@@ -332,6 +334,20 @@
       </geometry>
       <material name="black"/>
     </visual>
+    <visual name="pivot_mount_plate">
+      <origin xyz="0 0 ${pendulum_hinge_z_offset - 0.018}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.115 0.100 0.026"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <visual name="pivot_bearing_block">
+      <origin xyz="0 -0.018 ${pendulum_hinge_z_offset}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.065 0.050 0.060"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
     <visual name="front_bearing_sleeve">
       <origin xyz="0 ${rail_y} -0.400" rpy="0 ${PI / 2.0} 0"/>
       <geometry>
@@ -353,68 +369,33 @@
       </geometry>
       <material name="chain_steel"/>
     </visual>
-    <visual name="pendulum_encoder_bracket">
-      <origin xyz="0 0 -0.19" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.04 0.05 0.38"/>
-      </geometry>
-      <material name="steel"/>
-    </visual>
-    <collision name="pendulum_encoder_bracket_collision">
-      <origin xyz="0 0 -0.19" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.04 0.05 0.38"/>
-      </geometry>
-    </collision>
-
     <visual name="encoder_hub">
-      <origin xyz="0 0 0" rpy="${PI / 2.0} 0 0"/>
+      <origin xyz="0 0 ${pendulum_hinge_z_offset}" rpy="${PI / 2.0} 0 0"/>
       <geometry>
         <cylinder radius="0.026" length="0.075"/>
       </geometry>
       <material name="steel"/>
     </visual>
     <visual name="encoder_outer_disk">
-      <origin xyz="0 -0.034 0" rpy="${PI / 2.0} 0 0"/>
+      <origin xyz="0 -0.034 ${pendulum_hinge_z_offset}" rpy="${PI / 2.0} 0 0"/>
       <geometry>
         <cylinder radius="0.038" length="0.010"/>
       </geometry>
       <material name="dark_gray"/>
     </visual>
     <visual name="encoder_inner_disk">
-      <origin xyz="0 -0.042 0" rpy="${PI / 2.0} 0 0"/>
+      <origin xyz="0 -0.042 ${pendulum_hinge_z_offset}" rpy="${PI / 2.0} 0 0"/>
       <geometry>
         <cylinder radius="0.024" length="0.012"/>
       </geometry>
       <material name="aluminum"/>
-    </visual>
-    <visual name="pendulum_side_plate_left">
-      <origin xyz="0.032 -0.025 -0.180" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.012 0.018 0.245"/>
-      </geometry>
-      <material name="black"/>
-    </visual>
-    <visual name="pendulum_side_plate_right">
-      <origin xyz="-0.032 -0.025 -0.180" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.012 0.018 0.245"/>
-      </geometry>
-      <material name="black"/>
-    </visual>
-    <visual name="yellow_encoder_sensor">
-      <origin xyz="-0.040 -0.042 -0.045" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.016 0.014 0.030"/>
-      </geometry>
-      <material name="yellow"/>
     </visual>
   </link>
 
   <joint name="pendulum_hinge" type="continuous">
     <parent link="cart_link"/>
     <child link="pendulum_link"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="0 0 ${pendulum_hinge_z_offset}" rpy="0 ${initial_pendulum_joint_pitch} 0"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0.005" friction="0.0"/>
   </joint>
@@ -425,19 +406,13 @@
       <mass value="${pendulum_mass}"/>
       <xacro:cylinder_z_inertia mass="${pendulum_mass}" radius="${pendulum_radius}" length="${pendulum_length}"/>
     </inertial>
-    <visual name="shaft_coupler_visual">
+    <visual name="hinge_pin_visual">
       <origin xyz="0 ${pendulum_y_offset / 2.0} 0" rpy="${PI / 2.0} 0 0"/>
       <geometry>
-        <cylinder radius="${pendulum_coupler_radius}" length="${pendulum_y_offset_abs}"/>
+        <cylinder radius="${pendulum_coupler_radius * 1.2}" length="${pendulum_y_offset_abs}"/>
       </geometry>
       <material name="steel"/>
     </visual>
-    <collision name="shaft_coupler_collision">
-      <origin xyz="0 ${pendulum_y_offset / 2.0} 0" rpy="${PI / 2.0} 0 0"/>
-      <geometry>
-        <cylinder radius="${pendulum_coupler_radius}" length="${pendulum_y_offset_abs}"/>
-      </geometry>
-    </collision>
     <visual name="rod_visual">
       <origin xyz="0 ${pendulum_y_offset} ${-pendulum_length / 2.0}" rpy="0 0 0"/>
       <geometry>
@@ -445,18 +420,12 @@
       </geometry>
       <material name="steel"/>
     </visual>
-    <collision name="rod_collision">
-      <origin xyz="0 ${pendulum_y_offset} ${-pendulum_length / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${pendulum_radius}" length="${pendulum_length}"/>
-      </geometry>
-    </collision>
-    <visual name="tip_marker">
+    <visual name="rod_tip_cap">
       <origin xyz="0 ${pendulum_y_offset} ${-pendulum_length}" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.011"/>
+        <cylinder radius="${pendulum_radius * 1.25}" length="0.012"/>
       </geometry>
-      <material name="screw_dark"/>
+      <material name="dark_gray"/>
     </visual>
   </link>
 

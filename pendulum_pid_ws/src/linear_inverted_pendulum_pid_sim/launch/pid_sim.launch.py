@@ -149,7 +149,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "balance_assist_enabled",
-                default_value="true",
+                default_value="false",
                 description="Enable the simulation-only hinge assist during catch/balance.",
             ),
             DeclareLaunchArgument(

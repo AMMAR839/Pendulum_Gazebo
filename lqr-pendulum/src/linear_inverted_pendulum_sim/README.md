@@ -313,40 +313,41 @@ bergantung pada gain GUI tersebut.
 Memperbesar radius visual batang tidak banyak membantu di Gazebo karena tidak
 ada model aerodinamika. Kalau ingin membuat simulasi lebih mudah secara fisik,
 parameter yang lebih berpengaruh adalah panjang pendulum, massa, damping
-engsel, batas gaya cart, dan tuning controller. Checkout ini default-nya memakai
-assist engsel minimal yang sama dengan workspace real dan PID.
+engsel, batas gaya cart, dan tuning controller. Checkout terbaru default-nya
+no-assist: `balance_assist_enabled=false`; assist engsel lama hanya aktif jika
+diminta eksplisit lewat launch.
 
 Parameter tuning utama ada di `sim_serial_bridge.py`:
 
 ```python
-self.declare_parameter("balance_capture_deg", 10.0)
-self.declare_parameter("balance_capture_rate_rad_s", 2.2)
+self.declare_parameter("balance_capture_deg", 22.0)
+self.declare_parameter("balance_capture_rate_rad_s", 3.0)
 self.declare_parameter("balance_fallback_deg", 70.0)
 self.declare_parameter("balance_give_up_deg", 135.0)
-self.declare_parameter("balance_capture_cart_pos_m", 0.08)
-self.declare_parameter("balance_capture_cart_vel_mps", 2.4)
+self.declare_parameter("balance_capture_cart_pos_m", 0.38)
+self.declare_parameter("balance_capture_cart_vel_mps", 2.0)
 self.declare_parameter("balance_immediate_capture_deg", 2.0)
 self.declare_parameter("balance_immediate_capture_rate_rad_s", 1.0)
-self.declare_parameter("balance_immediate_capture_cart_pos_m", 0.06)
-self.declare_parameter("balance_immediate_capture_cart_vel_mps", 0.8)
+self.declare_parameter("balance_immediate_capture_cart_pos_m", 0.22)
+self.declare_parameter("balance_immediate_capture_cart_vel_mps", 1.2)
 self.declare_parameter("balance_auto_lock_enabled", True)
 self.declare_parameter("balance_auto_lock_angle_deg", 3.0)
-self.declare_parameter("balance_auto_lock_rate_rad_s", 1.2)
-self.declare_parameter("balance_auto_lock_cart_pos_m", 0.08)
-self.declare_parameter("balance_auto_lock_cart_vel_mps", 1.0)
+self.declare_parameter("balance_auto_lock_rate_rad_s", 2.0)
+self.declare_parameter("balance_auto_lock_cart_pos_m", 0.34)
+self.declare_parameter("balance_auto_lock_cart_vel_mps", 1.6)
 self.declare_parameter("balance_auto_lock_time_s", 0.08)
 self.declare_parameter("catch_region_deg", 95.0)
 self.declare_parameter("catch_region_rate_rad_s", 14.0)
-self.declare_parameter("catch_force_limit_n", 95.0)
-self.declare_parameter("balance_force_limit_n", 60.0)
+self.declare_parameter("catch_force_limit_n", 260.0)
+self.declare_parameter("balance_force_limit_n", 260.0)
 self.declare_parameter("balance_use_lqr", True)
-self.declare_parameter("balance_assist_enabled", True)
+self.declare_parameter("balance_assist_enabled", False)
 self.declare_parameter("balance_assist_angle_deg", 55.0)
 self.declare_parameter("balance_assist_kp_nm_per_rad", 3.0)
 self.declare_parameter("balance_assist_kd_nm_per_rad_s", 1.6)
 self.declare_parameter("balance_assist_torque_limit_nm", 3.0)
-self.declare_parameter("balance_lqr_force_scale", 0.02)
-self.declare_parameter("effort_limit_n", 150.0)
+self.declare_parameter("balance_lqr_force_scale", 0.85)
+self.declare_parameter("effort_limit_n", 260.0)
 ```
 
 ## Metode kontrol yang digunakan

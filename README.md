@@ -42,6 +42,36 @@ File penting di root:
 Pseudo serial dibuat otomatis oleh node bridge. Dari sisi `main.py`, simulasi
 terlihat seperti hardware STM32 karena format packet tetap sama.
 
+## Status no-assist 2026-05-11
+
+Ketiga workspace sekarang default `balance_assist_enabled=false`, jadi
+`/pendulum/hinge_assist_force_cmd` tetap `0.0 Nm` kecuali launch dijalankan
+dengan assist aktif secara eksplisit. Tiang yang ikut pendulum dan bola kecil
+di ujung pendulum sudah dilepas dari URDF agar bentuknya lebih dekat dengan
+alat asli di video. Poros engsel sekarang diberi bracket pendek yang menempel
+ke cart sebagai dudukan bearing, bukan sebagai assist atau tiang pendulum. World
+Gazebo dan URDF juga diberi meja/kotak bawah supaya pendulum tidak terlihat
+menabrak lantai.
+
+Validasi headless terbaru disimpan di:
+
+- `data_exports/lqr_noassist_final_20260511.csv`
+- `data_exports/real_noassist_final_20260511.csv`
+- `data_exports/pid_noassist_final_20260511.csv`
+
+Ketiganya sudah bisa masuk `BALANCE` dan diam tegak di tengah tanpa smart
+assist. Kriteria strict yang dipakai: `abs(degree)<=2`,
+`abs(theta_dot)<=0.35`, dan `abs(cmX)<=3`. Hasil validasi terakhir:
+
+| Workspace | Sampel `BALANCE` | Sampel strict | Tail strict 300 sampel akhir | Assist engsel |
+| --- | ---: | ---: | ---: | ---: |
+| `lqr` | 1097 | 486 | 279 | `0.0 Nm` |
+| `real` | 4872 | 4386 | 277 | `0.0 Nm` |
+| `pid` | 2831 | 1458 | 277 | `0.0 Nm` |
+
+Catatan: angka ini membuktikan hold tegak-tengah no-assist pada simulasi
+headless. Uji tahan impulse eksternal 2 N adalah pengujian terpisah.
+
 ## Mode dan tombol
 
 Mode yang dikirim lewat `/pendulum/sim_state`:
@@ -82,7 +112,7 @@ Semua workspace memakai topic yang sama agar mudah dibandingkan:
 | `/joint_states` | Posisi dan kecepatan `cart_slider` serta `pendulum_hinge`. |
 | `/pendulum/cart_velocity_cmd` | Command internal bridge dalam m/s. |
 | `/pendulum/cart_force_cmd` | Gaya cart yang benar-benar dikirim ke Gazebo. |
-| `/pendulum/hinge_assist_force_cmd` | Assist torsi minimal pada engsel khusus simulasi; sama di tiga workspace. |
+| `/pendulum/hinge_assist_force_cmd` | Torsi engsel khusus simulasi/gangguan eksternal. Pada default no-assist nilainya `0.0 Nm`. |
 | `/pendulum/sim_state` | Data ringkas untuk GUI dan debug. |
 
 Format `/pendulum/sim_state`:
@@ -135,10 +165,9 @@ Sistem kontrol:
   (`lqr_q_x`, `lqr_q_x_dot`, `lqr_q_theta`, `lqr_q_theta_dot`, `lqr_r`).
 - Target regulasi balance adalah state tengah:
   `[x, x_dot, theta, theta_dot] = [0, 0, 0, 0]`.
-- Capture dibuat lebih ketat agar mode `BALANCE` tidak masuk ketika cart masih
-  jauh dari tengah: `balance_capture_cart_pos_m = 0.08`. Pada LQR, batas
-  velocity capture dibuat lebih longgar karena swing-up melewati tengah lebih
-  cepat.
+- Capture no-assist dibuat lebih selektif: `balance_capture_deg = 22.0`,
+  `balance_capture_cart_pos_m = 0.16`, `balance_capture_rate_rad_s = 1.5`,
+  dan pada LQR `balance_capture_cart_vel_mps = 0.6`.
 - Saat pertama masuk `BALANCE`, referensi LQR ditahan pada posisi cart saat
   tertangkap, lalu diramp pelan-pelan ke `0 cm`. Ini mencegah hentakan besar
   yang membuat cart berosilasi walaupun pendulum sudah tegak.
@@ -149,15 +178,12 @@ Sistem kontrol:
   `lqr_q_theta_dot = 600`) supaya cart kembali ke tengah tanpa force
   berosilasi kasar.
 - Force LQR pada mode `BALANCE` diskalakan dengan
-  `balance_lqr_force_scale = 0.02`, sedangkan force limit tetap ada sebagai
-  pagar keselamatan. Ini membuat koreksi cart lebih halus dan tidak bergantung
-  pada hentakan effort besar.
+  `balance_lqr_force_scale = 0.85`; catch/balance cart effort dibatasi
+  `260 N` pada tuning no-assist terbaru.
 - Jika `balance_use_lqr` dimatikan manual, bridge masih punya fallback
   PID-like upright controller untuk debugging.
-- Ada assist engsel minimal untuk membantu simulasi: aktif hanya dekat tegak
-  (`55 deg`) dengan limit `3.0 Nm`.
-- Tuning memakai force limit konservatif agar hasil simulasi tidak bergantung
-  pada effort Gazebo yang terlalu bebas.
+- Assist engsel default mati (`balance_assist_enabled=false`). Validasi
+  terbaru sudah membuktikan hold tegak-tengah tanpa assist pada simulasi.
 
 Kapan dipakai:
 
@@ -167,7 +193,7 @@ Kapan dipakai:
 - Untuk laporan yang ingin memisahkan metode LQR dari metode Manual Book dan
   PID.
 
-Validasi LQR center terbaru:
+Validasi LQR center lama dengan assist:
 
 - File: `data_exports/lqr_center_balance_validation_scaled_20260511.csv`.
 - Mode berpindah `SWING_UP -> BALANCE` pada sekitar `8.36 s`.
@@ -214,9 +240,7 @@ Sistem kontrol:
   full-state feedback, bukan PID murni.
 - Motor model lebih real-style: deadband PWM `3212`, slope `189.1`, time
   constant sekitar `0.40 s`.
-- Assist engsel minimal aktif default agar bisa dibandingkan adil dengan
-  `lqr-pendulum` dan `pendulum_pid_ws`. Aktuator utama tetap gaya cart; assist
-  engsel hanya koreksi kecil dekat posisi tegak.
+- Default terbaru memakai no-assist (`balance_assist_enabled=false`).
 
 Kapan dipakai:
 
@@ -285,7 +309,7 @@ Kapan dipakai:
 | Balance | LQR aktif | Full-state feedback Manual-style | PID sudut + PD cart |
 | Motor model | Deadband PWM + time constant | Deadband PWM + time constant | Deadband PWM + time constant |
 | Force limit | Gaya cart LQR dibatasi | Gaya cart real-style dibatasi | Gaya cart PID dibatasi |
-| Assist engsel | Aktif minimal: `55 deg`, `3.0 Nm` | Aktif minimal: `55 deg`, `3.0 Nm` | Aktif minimal: `55 deg`, `3.0 Nm` |
+| Assist engsel | Default mati; opsional `55 deg`, `3.0 Nm` | Default mati; opsional `55 deg`, `3.0 Nm` | Default mati; opsional `55 deg`, `3.0 Nm` |
 
 ## Patokan gaya swing-up untuk real
 

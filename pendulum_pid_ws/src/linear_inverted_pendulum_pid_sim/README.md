@@ -2,7 +2,8 @@
 
 Workspace ini adalah turunan dari `pendulum_real_ws`, tetapi balance controller
 dibuat khusus memakai PID. Model fisik, motor, swing-up, capture, dan assist
-engsel minimal tetap diambil dari workspace real agar perbandingan adil.
+engsel tetap diambil dari workspace real agar perbandingan adil. Checkout
+terbaru memakai no-assist sebagai default: `balance_assist_enabled=false`.
 
 Perbedaan utama:
 
@@ -73,11 +74,11 @@ Alur pemakaian:
 - `/pendulum/cart_velocity_cmd`: command kecepatan cart dari bridge PID.
 - `/pendulum/cart_force_cmd`: gaya cart yang dikirim ke Gazebo.
 - `/pendulum/sim_state`: `[degree, cmX, setspeed, energy, theta_dot_rad, theta_rad, x_center_cm, mode]`.
-- `/pendulum/hinge_assist_force_cmd`: assist engsel minimal khusus simulasi dan
-  jalur uji gangguan eksternal.
+- `/pendulum/hinge_assist_force_cmd`: torsi engsel khusus simulasi/gangguan
+  eksternal. Pada default no-assist nilainya `0.0 Nm`.
 
-Default `balance_assist_enabled=True`. Untuk uji cart-only murni, jalankan
-launch dengan `balance_assist_enabled:=false`.
+Default `balance_assist_enabled=false`. Untuk menghidupkan assist lama, jalankan
+launch dengan `balance_assist_enabled:=true`.
 
 Nilai assist dibuat sama dengan workspace LQR dan real:
 
@@ -215,14 +216,14 @@ motor_pwm_deadband      = 3212.0
 motor_pwm_per_cmps      = 189.1
 motor_time_constant_s   = 0.40
 swing_force_limit_n     = 150.0
-catch_force_limit_n     = 95.0
-balance_force_limit_n   = 60.0
-effort_limit_n          = 150.0
+catch_force_limit_n     = 260.0
+balance_force_limit_n   = 260.0
+effort_limit_n          = 260.0
 ```
 
 ## Catatan metode
 
 Workspace ini memang sengaja PID untuk balance. Homing masih PD, swing-up masih
-energy-based, dan motor model tetap real-style. Dengan assist engsel minimal,
-klaim stabil harus tetap dibuktikan dari run yang menunjukkan sudut, theta-dot,
-dan cart dekat tengah, bukan hanya dari mode `BALANCE`.
+energy-based, dan motor model tetap real-style. Dengan no-assist default, klaim
+stabil harus tetap dibuktikan dari run yang menunjukkan sudut, theta-dot, dan
+cart dekat tengah, bukan hanya dari mode `BALANCE`.
