@@ -37,11 +37,11 @@ EXTERNAL_FORCE_SIGN = -1.0 if os.environ.get("PENDULUM_EXTERNAL_FORCE_SIGN", "po
 
 if IS_REAL_SIM_PORT or IS_PID_SIM_PORT or IS_LQR_SIM_PORT:
 	DEFAULT_GAINS = {
-		"K_TH": 10.0,
-		"K_TH_D": 3.0,
-		"K_X": 2.4,
-		"K_X_D": 3.4,
-		"K_X_INT": 0.08
+		"K_TH": 11.0,
+		"K_TH_D": 3.6,
+		"K_X": 3.0,
+		"K_X_D": 4.0,
+		"K_X_INT": 0.10
 	}
 elif IS_SIM_PORT:
 	DEFAULT_GAINS = {

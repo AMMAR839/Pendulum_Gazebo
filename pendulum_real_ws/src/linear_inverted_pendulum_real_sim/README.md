@@ -3,8 +3,8 @@
 Workspace ini dibuat sebagai versi baru yang lebih dekat ke Manual Book LIP01.
 Aktuator cart dibuat lebih mirip sistem asli dengan deadband PWM, konstanta waktu
 motor, batas travel 78 cm, dan batas gaya yang tidak dibiarkan sampai ratusan N.
-Untuk demo simulasi supaya bisa benar-benar tegak, bridge juga memakai assist
-torsi kecil pada engsel saat fase catch/balance.
+Assist engsel minimal aktif default agar hasilnya bisa dibandingkan dengan
+workspace LQR dan PID, tetapi gaya utama tetap dari cart.
 
 Data utama dari Manual Book yang dipakai:
 
@@ -73,10 +73,11 @@ Alur pemakaian:
 - `/pendulum/cart_velocity_cmd`: command kecepatan cart dari controller internal.
 - `/pendulum/cart_force_cmd`: gaya motor cart yang dikirim ke Gazebo.
 - `/pendulum/sim_state`: `[degree, cmX, setspeed, energy, theta_dot_rad, theta_rad, x_center_cm, mode]`.
-- `/pendulum/hinge_assist_force_cmd`: assist kecil khusus simulasi saat catch/balance.
+- `/pendulum/hinge_assist_force_cmd`: assist engsel minimal khusus simulasi dan
+  jalur uji gangguan eksternal.
 
-Assist engsel bisa dimatikan dengan parameter `balance_assist_enabled:=false`
-kalau ingin menguji mode cart-only murni.
+Default `balance_assist_enabled:=true`. Kalau ingin eksperimen cart-only murni,
+jalankan launch dengan `balance_assist_enabled:=false`.
 
 ## Metode kontrol
 
@@ -133,7 +134,7 @@ self.declare_parameter("swing_top_pass_angle_deg", 80.0)
 self.declare_parameter("balance_capture_deg", 10.0)
 self.declare_parameter("balance_capture_rate_rad_s", 2.4)
 self.declare_parameter("balance_capture_cart_pos_m", 0.08)
-self.declare_parameter("balance_capture_cart_vel_mps", 2.2)
+self.declare_parameter("balance_capture_cart_vel_mps", 1.2)
 self.declare_parameter("catch_region_deg", 95.0)
 self.declare_parameter("catch_region_rate_rad_s", 14.0)
 ```
@@ -182,7 +183,7 @@ sebagai simulasi aktuator real:
 ```text
 swing_force_limit_n  = 145.0
 catch_force_limit_n  = 95.0
-balance_force_limit_n = 45.0
+balance_force_limit_n = 60.0
 effort_limit_n       = 150.0
 ```
 
@@ -191,15 +192,13 @@ terlalu awal: sudut masih jauh dari tegak, theta-dot masih tinggi, cart sudah
 terlalu cepat, atau rail guard sedang menarik cart kembali dari ujung rel. Karena
 itu capture dibuat lebih ketat, bukan menaikkan force lagi.
 
-Untuk demo simulasi yang lebih stabil, assist engsel aktif saat pendulum sudah
-mulai naik ke area atas. Ini bantuan khusus simulasi, bukan aktuator tambahan
-pada alat asli:
+Assist engsel dibuat sama dan minimal untuk eksperimen pembanding:
 
 ```text
-balance_assist_angle_deg        = 115.0
-balance_assist_kp_nm_per_rad    = 3.4
-balance_assist_kd_nm_per_rad_s  = 2.4
-balance_assist_torque_limit_nm  = 4.5
+balance_assist_angle_deg        = 55.0
+balance_assist_kp_nm_per_rad    = 3.0
+balance_assist_kd_nm_per_rad_s  = 1.6
+balance_assist_torque_limit_nm  = 3.0
 ```
 
 ### Model motor manual
@@ -226,6 +225,6 @@ self.declare_parameter("effort_limit_n", 150.0)
 
 ## Catatan
 
-Versi ini tetap memakai dimensi manual book, tetapi assist engsel default aktif
-agar simulasi bisa berdiri tegak dan cocok untuk demonstrasi. Untuk eksperimen
-yang lebih ketat terhadap cart-only, jalankan dengan `balance_assist_enabled:=false`.
+Versi ini tetap memakai dimensi manual book dan sekarang default-nya memakai
+assist engsel minimal. Validasi harus mengecek sudut, theta-dot, dan posisi cart
+dekat tengah; mode `BALANCE` saja belum cukup.

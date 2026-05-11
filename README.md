@@ -10,7 +10,7 @@ tetap dipakai sebagai panel tombol, tuning gain, grafik, dan pembaca status.
 | Workspace | Package | Serial GUI | Launch | Tujuan utama |
 | --- | --- | --- | --- | --- |
 | `lqr-pendulum` | `linear_inverted_pendulum_sim` | `/tmp/pendulum_lqr_serial` | `sim.launch.py` | Workspace LQR untuk balance berbasis model linear. |
-| `pendulum_real_ws` | `linear_inverted_pendulum_real_sim` | `/tmp/pendulum_real_serial` | `real_sim.launch.py` | Simulasi yang lebih dekat ke Manual Book dan baseline yang sudah bisa tegak stabil. |
+| `pendulum_real_ws` | `linear_inverted_pendulum_real_sim` | `/tmp/pendulum_real_serial` | `real_sim.launch.py` | Simulasi yang lebih dekat ke Manual Book dengan full-state feedback real-style. |
 | `pendulum_pid_ws` | `linear_inverted_pendulum_pid_sim` | `/tmp/pendulum_pid_serial` | `pid_sim.launch.py` | Turunan `pendulum_real_ws`, tetapi balance controller dibuat PID. |
 
 ## Arsitektur umum
@@ -82,7 +82,7 @@ Semua workspace memakai topic yang sama agar mudah dibandingkan:
 | `/joint_states` | Posisi dan kecepatan `cart_slider` serta `pendulum_hinge`. |
 | `/pendulum/cart_velocity_cmd` | Command internal bridge dalam m/s. |
 | `/pendulum/cart_force_cmd` | Gaya cart yang benar-benar dikirim ke Gazebo. |
-| `/pendulum/hinge_assist_force_cmd` | Assist torsi kecil pada engsel khusus simulasi. |
+| `/pendulum/hinge_assist_force_cmd` | Assist torsi minimal pada engsel khusus simulasi; sama di tiga workspace. |
 | `/pendulum/sim_state` | Data ringkas untuk GUI dan debug. |
 
 Format `/pendulum/sim_state`:
@@ -135,10 +135,10 @@ Sistem kontrol:
   (`lqr_q_x`, `lqr_q_x_dot`, `lqr_q_theta`, `lqr_q_theta_dot`, `lqr_r`).
 - Target regulasi balance adalah state tengah:
   `[x, x_dot, theta, theta_dot] = [0, 0, 0, 0]`.
-- Capture LQR dibuat lebih ketat agar mode `BALANCE` tidak masuk ketika cart
-  masih jauh dari tengah: `balance_capture_cart_pos_m = 0.035`,
-  `balance_auto_lock_cart_pos_m = 0.03`, `balance_capture_rate_rad_s = 0.35`,
-  dan kecepatan cart juga dibatasi.
+- Capture dibuat lebih ketat agar mode `BALANCE` tidak masuk ketika cart masih
+  jauh dari tengah: `balance_capture_cart_pos_m = 0.08`. Pada LQR, batas
+  velocity capture dibuat lebih longgar karena swing-up melewati tengah lebih
+  cepat.
 - Saat pertama masuk `BALANCE`, referensi LQR ditahan pada posisi cart saat
   tertangkap, lalu diramp pelan-pelan ke `0 cm`. Ini mencegah hentakan besar
   yang membuat cart berosilasi walaupun pendulum sudah tegak.
@@ -149,12 +149,13 @@ Sistem kontrol:
   `lqr_q_theta_dot = 600`) supaya cart kembali ke tengah tanpa force
   berosilasi kasar.
 - Force LQR pada mode `BALANCE` diskalakan dengan
-  `balance_lqr_force_scale = 0.25`, sedangkan force limit tetap ada sebagai
+  `balance_lqr_force_scale = 0.02`, sedangkan force limit tetap ada sebagai
   pagar keselamatan. Ini membuat koreksi cart lebih halus dan tidak bergantung
   pada hentakan effort besar.
 - Jika `balance_use_lqr` dimatikan manual, bridge masih punya fallback
   PID-like upright controller untuk debugging.
-- Ada assist engsel kecil untuk membantu simulasi.
+- Ada assist engsel minimal untuk membantu simulasi: aktif hanya dekat tegak
+  (`55 deg`) dengan limit `3.0 Nm`.
 - Tuning memakai force limit konservatif agar hasil simulasi tidak bergantung
   pada effort Gazebo yang terlalu bebas.
 
@@ -213,9 +214,9 @@ Sistem kontrol:
   full-state feedback, bukan PID murni.
 - Motor model lebih real-style: deadband PWM `3212`, slope `189.1`, time
   constant sekitar `0.40 s`.
-- Force limit lebih rendah daripada workspace demo.
-- Assist engsel aktif default sebagai bantuan khusus simulasi agar bisa tegak
-  stabil di Gazebo.
+- Assist engsel minimal aktif default agar bisa dibandingkan adil dengan
+  `lqr-pendulum` dan `pendulum_pid_ws`. Aktuator utama tetap gaya cart; assist
+  engsel hanya koreksi kecil dekat posisi tegak.
 
 Kapan dipakai:
 
@@ -223,8 +224,9 @@ Kapan dipakai:
 - Untuk membandingkan simulasi dengan trainer fisik.
 - Untuk tuning yang ingin mempertahankan karakter real-style.
 
-Catatan penting: hasil tegak stabil di simulasi ini masih dibantu assist engsel.
-Jadi jangan dianggap sebagai clone hardware murni tanpa bantuan simulasi.
+Catatan penting: kalau ingin uji cart-only murni, jalankan launch dengan
+`balance_assist_enabled:=false`. Untuk klaim "stabil sempurna", tetap cek mode
+`BALANCE`, sudut kecil, theta-dot kecil, dan cart dekat tengah.
 
 ### 3. `pendulum_pid_ws`
 
@@ -282,8 +284,8 @@ Kapan dipakai:
 | Swing-up | Energy-based | Energy-based dengan readiness gate | Energy-based dengan readiness gate |
 | Balance | LQR aktif | Full-state feedback Manual-style | PID sudut + PD cart |
 | Motor model | Deadband PWM + time constant | Deadband PWM + time constant | Deadband PWM + time constant |
-| Force limit | LQR balance dibatasi | Lebih rendah/real-style | Lebih rendah/real-style |
-| Assist engsel | Ada | Ada, untuk stabilitas simulasi | Ada, untuk stabilitas simulasi |
+| Force limit | Gaya cart LQR dibatasi | Gaya cart real-style dibatasi | Gaya cart PID dibatasi |
+| Assist engsel | Aktif minimal: `55 deg`, `3.0 Nm` | Aktif minimal: `55 deg`, `3.0 Nm` | Aktif minimal: `55 deg`, `3.0 Nm` |
 
 ## Patokan gaya swing-up untuk real
 
@@ -317,7 +319,7 @@ Swing-up tetap memakai teori energy-based swing-up. Perbaikan terbaru tidak
 mengganti teorinya, tetapi mengembalikan cap swing/catch ke baseline yang bisa
 mencapai posisi tegak: `swing_force_limit_n = 145 N` dan
 `catch_force_limit_n = 95 N`. Balance tetap dibatasi lebih rendah dengan
-`balance_force_limit_n = 45 N`, sehingga gaya besar dipakai untuk membangun
+`balance_force_limit_n = 60 N`, sehingga gaya besar dipakai untuk membangun
 energi swing-up, bukan untuk menahan mode balance secara kasar. Gate terbaru
 tetap menahan capture sampai swing-up membangun energi lebih lama:
 `swing_min_top_passes_before_catch = 3`,
@@ -444,8 +446,10 @@ Output pentingnya:
 - `gaya gagal pertama`: gaya terkecil di daftar uji yang membuat keluar balance,
   sudut melewati batas, atau cart menyentuh batas rail.
 
-Hasil uji terbaru dengan impulse `0.20 s` dan effort cart di-slew-limit
-`320 N/s`:
+Hasil uji impulse lama di bawah berasal dari baseline berbantuan assist lama dan
+tidak boleh dipakai sebagai klaim cart-only atau klaim assist minimal terbaru.
+Ulangi uji setelah state stabil di tengah. Baseline lama dengan impulse `0.20 s`
+dan effort cart di-slew-limit `320 N/s`:
 
 | Workspace | Positif aman/gagal | Negatif aman/gagal |
 | --- | ---: | ---: |

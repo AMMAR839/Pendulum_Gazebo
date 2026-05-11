@@ -30,6 +30,7 @@ def generate_launch_description():
     gz_partition = LaunchConfiguration("gz_partition")
     serial_link = LaunchConfiguration("serial_link")
     status_rate_hz = LaunchConfiguration("status_rate_hz")
+    balance_assist_enabled = LaunchConfiguration("balance_assist_enabled")
     enable_serial_bridge = LaunchConfiguration("enable_serial_bridge")
     external_force_visual_hold_s = LaunchConfiguration("external_force_visual_hold_s")
 
@@ -108,6 +109,10 @@ def generate_launch_description():
                     external_force_visual_hold_s,
                     value_type=float,
                 ),
+                "balance_assist_enabled": ParameterValue(
+                    balance_assist_enabled,
+                    value_type=bool,
+                ),
                 "use_sim_time": True,
             }
         ],
@@ -141,6 +146,11 @@ def generate_launch_description():
                 "status_rate_hz",
                 default_value="100.0",
                 description="Status packet rate sent to the pseudo serial port.",
+            ),
+            DeclareLaunchArgument(
+                "balance_assist_enabled",
+                default_value="true",
+                description="Enable the minimal simulation-only hinge assist.",
             ),
             DeclareLaunchArgument(
                 "enable_serial_bridge",

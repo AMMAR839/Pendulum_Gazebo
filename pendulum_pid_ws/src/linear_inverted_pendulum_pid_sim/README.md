@@ -2,8 +2,7 @@
 
 Workspace ini adalah turunan dari `pendulum_real_ws`, tetapi balance controller
 dibuat khusus memakai PID. Model fisik, motor, swing-up, capture, dan assist
-simulasi tetap diambil dari workspace real karena baseline itu sudah bisa
-berdiri tegak lebih stabil.
+engsel minimal tetap diambil dari workspace real agar perbandingan adil.
 
 Perbedaan utama:
 
@@ -74,13 +73,19 @@ Alur pemakaian:
 - `/pendulum/cart_velocity_cmd`: command kecepatan cart dari bridge PID.
 - `/pendulum/cart_force_cmd`: gaya cart yang dikirim ke Gazebo.
 - `/pendulum/sim_state`: `[degree, cmX, setspeed, energy, theta_dot_rad, theta_rad, x_center_cm, mode]`.
-- `/pendulum/hinge_assist_force_cmd`: assist kecil khusus simulasi saat catch/balance.
+- `/pendulum/hinge_assist_force_cmd`: assist engsel minimal khusus simulasi dan
+  jalur uji gangguan eksternal.
 
-Assist engsel default tetap aktif agar demo simulasi bisa berdiri tegak seperti
-baseline `pendulum_real_ws`. Kalau ingin uji cart-only, jalankan:
+Default `balance_assist_enabled=True`. Untuk uji cart-only murni, jalankan
+launch dengan `balance_assist_enabled:=false`.
 
-```bash
-ros2 launch linear_inverted_pendulum_pid_sim pid_sim.launch.py balance_assist_enabled:=false
+Nilai assist dibuat sama dengan workspace LQR dan real:
+
+```text
+balance_assist_angle_deg        = 55.0
+balance_assist_kp_nm_per_rad    = 3.0
+balance_assist_kd_nm_per_rad_s  = 1.6
+balance_assist_torque_limit_nm  = 3.0
 ```
 
 ## Metode kontrol
@@ -209,15 +214,15 @@ Parameter utama:
 motor_pwm_deadband      = 3212.0
 motor_pwm_per_cmps      = 189.1
 motor_time_constant_s   = 0.40
-swing_force_limit_n     = 145.0
+swing_force_limit_n     = 150.0
 catch_force_limit_n     = 95.0
-balance_force_limit_n   = 45.0
+balance_force_limit_n   = 60.0
 effort_limit_n          = 150.0
 ```
 
 ## Catatan metode
 
 Workspace ini memang sengaja PID untuk balance. Homing masih PD, swing-up masih
-energy-based, dan motor model tetap real-style. Assist engsel adalah bantuan
-simulasi agar pendulum bisa berdiri tegak di Gazebo; itu bukan aktuator tambahan
-pada alat asli.
+energy-based, dan motor model tetap real-style. Dengan assist engsel minimal,
+klaim stabil harus tetap dibuktikan dari run yang menunjukkan sudut, theta-dot,
+dan cart dekat tengah, bukan hanya dari mode `BALANCE`.
