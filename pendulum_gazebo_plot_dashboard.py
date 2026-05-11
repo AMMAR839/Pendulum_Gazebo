@@ -204,6 +204,7 @@ class DashboardRunner:
         self.external_thread = None
         self.stop_event = threading.Event()
         self.external_done = threading.Event()
+        self.manual_external_lock = threading.Lock()
         self.main_thread_id = threading.get_ident()
         self.screen_w, self.screen_h = screen_size()
 
@@ -306,7 +307,8 @@ class DashboardRunner:
             f"source {self.cfg.workspace}/install/setup.bash && "
             f"ros2 launch {self.cfg.package} {self.cfg.launch_file} "
             f"gz_args:='{gz_args}' "
-            f"serial_link:={self.cfg.serial_link}"
+            f"serial_link:={self.cfg.serial_link} "
+            f"external_force_visual_hold_s:={self.args.external_visual_hold}"
         )
         print(f"[RUN] Menjalankan {self.cfg.label}: Gazebo + grafik live")
         self.launch_proc = subprocess.Popen(
@@ -373,7 +375,7 @@ class DashboardRunner:
             print(f"[TX] External force {force_n:+.3f} N")
 
     def homing(self):
-        self.send_button(BUTTON_Y, "Y / HOMING")
+        self.send_button(BUTTON_Y, "W / HOMING")
         deadline = time.monotonic() + self.args.homing_timeout
         while time.monotonic() < deadline:
             if self.monitor.mode() == MODE_READY:
@@ -383,14 +385,17 @@ class DashboardRunner:
         print("[WARN] Homing timeout, lanjut mencoba swing-up.")
 
     def swing_up(self):
-        self.send_button(BUTTON_X, "X / SWING-UP")
+        self.send_button(BUTTON_X, "A / SWING-UP")
 
     def balance(self):
-        self.send_button(BUTTON_A, "A / BALANCE")
+        self.send_button(BUTTON_A, "S / BALANCE")
+
+    def external_impulse_now(self):
+        self.trigger_external_impulse("X / EXTERNAL FORCE")
 
     def finish(self):
         if self.serial is not None:
-            self.send_button(BUTTON_B, "B / FINISH")
+            self.send_button(BUTTON_B, "D / FINISH")
 
     def auto_swing_balance(self):
         try:
@@ -434,7 +439,32 @@ class DashboardRunner:
             print(f"[AUTO] Gagal: {exc}")
 
     def external_test_requested(self):
-        return self.args.external_impulse_force is not None or self.args.find_max_external
+        return self.args.find_max_external or (
+            self.args.external_impulse_force is not None
+            and self.args.external_trigger == "balance"
+        )
+
+    def trigger_external_impulse(self, reason):
+        if self.args.external_impulse_force is None:
+            return
+        if not self.manual_external_lock.acquire(blocking=False):
+            print("[IMPULSE] Gaya eksternal masih aktif; trigger X diabaikan dulu.")
+            return
+
+        try:
+            force_n = float(self.args.external_impulse_force)
+            duration_s = max(0.01, float(self.args.external_impulse_duration))
+            print(
+                f"[IMPULSE] {reason} memicu gaya eksternal {force_n:+.3f} N "
+                f"selama {duration_s:.3f} s tanpa menunggu BALANCE."
+            )
+            self.set_external_force(force_n)
+            self._sleep_with_ui(duration_s)
+        finally:
+            try:
+                self.set_external_force(0.0, quiet=True)
+            finally:
+                self.manual_external_lock.release()
 
     def external_worker(self):
         try:
@@ -1078,19 +1108,34 @@ def parse_args():
         "--force-balance-after",
         type=float,
         default=0.0,
-        help="Kirim A paksa setelah N detik; 0 berarti nonaktif dan bridge menunggu capture yang siap.",
+        help="Kirim perintah BALANCE paksa setelah N detik; 0 berarti nonaktif dan bridge menunggu capture yang siap.",
     )
     parser.add_argument(
         "--external-impulse-force",
         type=float,
         default=None,
-        help="Beri gaya eksternal sekali setelah BALANCE stabil. Nilai negatif mendorong arah sebaliknya.",
+        help="Besar gaya eksternal impulse. Default dipakai saat tombol X ditekan; nilai negatif mendorong arah sebaliknya.",
     )
     parser.add_argument(
         "--external-impulse-duration",
         type=float,
         default=0.20,
         help="Lama gaya impulse aktif sebelum otomatis dikembalikan ke 0 N.",
+    )
+    parser.add_argument(
+        "--external-trigger",
+        choices=("x", "balance"),
+        default="x",
+        help=(
+            "Kapan --external-impulse-force dikirim: 'x' hanya saat tombol "
+            "X ditekan, atau 'balance' setelah BALANCE stabil."
+        ),
+    )
+    parser.add_argument(
+        "--external-visual-hold",
+        type=float,
+        default=10.0,
+        help="Opsi kompatibilitas lama; visual gaya eksternal di Gazebo dinonaktifkan.",
     )
     parser.add_argument(
         "--external-impulse-delay",
@@ -1160,6 +1205,27 @@ def main():
         fig, axes, lines, status_text = create_plot(runner.screen_w, runner.screen_h)
         tile_until = time.monotonic() + 20.0
 
+        def run_key_action(action):
+            try:
+                action()
+            except Exception as exc:
+                print(f"[KEY] Gagal menjalankan tombol manual: {exc}")
+
+        def on_key_press(event):
+            key = (event.key or "").lower()
+            actions = {
+                "w": runner.homing,
+                "a": runner.swing_up,
+                "s": runner.balance,
+                "d": runner.finish,
+                "x": runner.external_impulse_now,
+                "z": runner.auto_swing_balance,
+            }
+            action = actions.get(key)
+            if action is None:
+                return
+            threading.Thread(target=run_key_action, args=(action,), daemon=True).start()
+
         def pump_plot():
             update_plot(
                 fig,
@@ -1174,6 +1240,7 @@ def main():
                 tile_dashboard_windows(runner.screen_w, runner.screen_h)
 
         runner.ui_pump = pump_plot
+        fig.canvas.mpl_connect("key_press_event", on_key_press)
         pump_plot()
         runner.start()
         start = time.monotonic()

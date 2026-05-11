@@ -12,6 +12,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 import xacro
 
 
@@ -30,6 +31,7 @@ def generate_launch_description():
     serial_link = LaunchConfiguration("serial_link")
     status_rate_hz = LaunchConfiguration("status_rate_hz")
     enable_serial_bridge = LaunchConfiguration("enable_serial_bridge")
+    external_force_visual_hold_s = LaunchConfiguration("external_force_visual_hold_s")
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -102,6 +104,10 @@ def generate_launch_description():
             {
                 "serial_symlink": serial_link,
                 "status_rate_hz": status_rate_hz,
+                "external_force_visual_hold_s": ParameterValue(
+                    external_force_visual_hold_s,
+                    value_type=float,
+                ),
                 "use_sim_time": True,
             }
         ],
@@ -140,6 +146,13 @@ def generate_launch_description():
                 "enable_serial_bridge",
                 default_value="true",
                 description="Start the pseudo-serial controller bridge.",
+            ),
+            DeclareLaunchArgument(
+                "external_force_visual_hold_s",
+                default_value="10.0",
+                description=(
+                    "Compatibility option; the Gazebo external-force visual is disabled."
+                ),
             ),
             SetEnvironmentVariable("GZ_PARTITION", gz_partition),
             LogInfo(msg=["Gazebo Transport partition: ", gz_partition]),

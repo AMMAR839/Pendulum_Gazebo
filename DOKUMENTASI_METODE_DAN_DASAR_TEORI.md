@@ -768,6 +768,30 @@ jalur balance aktif memanggil state feedback `u = -Kx`. Batas klaimnya tetap
 simulasi Gazebo: force yang dilaporkan adalah effort joint, bukan gaya motor
 fisik aktual.
 
+Tuning terbaru untuk LQR menekankan balance di tengah rail, bukan hanya sudut
+pendulum tegak. Capture dibuat lebih ketat supaya `BALANCE` hanya aktif saat
+cart sudah dekat tengah (`balance_capture_cart_pos_m = 0.035` dan
+`balance_auto_lock_cart_pos_m = 0.03`) serta kecepatan sudut sudah rendah
+(`balance_capture_rate_rad_s = 0.35`). Bobot LQR tetap model-based dan
+konservatif (`lqr_q_x = 160`, `lqr_q_x_dot = 30`, `lqr_q_theta = 1000`,
+`lqr_q_theta_dot = 600`) supaya cart kembali ke tengah tanpa force berosilasi
+kasar. Force LQR pada mode `BALANCE` juga diskalakan dengan
+`balance_lqr_force_scale = 0.25` agar koreksi cart lebih halus. Dengan demikian
+klaim yang aman adalah "LQR menjaga pendulum tegak sambil meregulasi cart ke
+tengah", bukan "cart diam total".
+Saat mode `BALANCE` baru aktif, referensi LQR diambil dari posisi cart saat
+tertangkap lalu digeser pelan-pelan ke `0 cm`, sehingga tidak ada hentakan
+besar yang membuat cart berosilasi.
+
+Validasi headless terbaru disimpan pada
+`data_exports/lqr_center_balance_validation_scaled_20260511.csv`. Pada run ini
+mode berpindah `SWING_UP -> BALANCE` sekitar `8.36 s`, fase `BALANCE` bertahan
+sekitar `28.10 s`, rata-rata absolut sudut balance `0.0256 deg`, dan rata-rata
+absolut posisi cart balance `0.1534 cm`. Setelah 50 sampel awal transien,
+rata-rata absolut posisi cart turun menjadi `0.0810 cm` dengan maksimum
+`0.6399 cm`. Angka tersebut boleh dipakai sebagai bukti simulasi bahwa LQR
+tidak hanya menahan sudut, tetapi juga mengembalikan cart ke tengah rail.
+
 ### 15.2 `pendulum_real_ws`
 
 Path:
@@ -1118,7 +1142,7 @@ Kesimpulan utama:
 4. `pendulum_real_ws` adalah baseline Manual-style dengan full-state feedback.
 5. `pendulum_pid_ws` adalah pembanding yang memakai PID sudut pendulum.
 6. `lqr-pendulum` adalah workspace LQR dengan `balance_use_lqr=True` sebagai
-   default.
+   default dan tuning terbaru menahan capture sampai cart dekat tengah.
 7. Motor model dan force limit real-style membuat simulasi lebih realistis
    tetapi lebih sulit dibanding model ideal.
 8. Assist engsel perlu ditulis sebagai bantuan simulasi, bukan komponen hardware

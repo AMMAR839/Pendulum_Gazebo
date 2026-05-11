@@ -32,6 +32,7 @@ def generate_launch_description():
     status_rate_hz = LaunchConfiguration("status_rate_hz")
     balance_assist_enabled = LaunchConfiguration("balance_assist_enabled")
     enable_serial_bridge = LaunchConfiguration("enable_serial_bridge")
+    external_force_visual_hold_s = LaunchConfiguration("external_force_visual_hold_s")
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -104,6 +105,10 @@ def generate_launch_description():
             {
                 "serial_symlink": serial_link,
                 "status_rate_hz": status_rate_hz,
+                "external_force_visual_hold_s": ParameterValue(
+                    external_force_visual_hold_s,
+                    value_type=float,
+                ),
                 "balance_assist_enabled": ParameterValue(
                     balance_assist_enabled,
                     value_type=bool,
@@ -151,6 +156,13 @@ def generate_launch_description():
                 "enable_serial_bridge",
                 default_value="true",
                 description="Start the pseudo-serial controller bridge.",
+            ),
+            DeclareLaunchArgument(
+                "external_force_visual_hold_s",
+                default_value="10.0",
+                description=(
+                    "Compatibility option; the Gazebo external-force visual is disabled."
+                ),
             ),
             SetEnvironmentVariable("GZ_PARTITION", gz_partition),
             LogInfo(msg=["Gazebo Transport partition: ", gz_partition]),

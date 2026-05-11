@@ -56,7 +56,7 @@ Mode yang dikirim lewat `/pendulum/sim_state`:
 | `6` | `SWING_UP` | Membangun energi pendulum agar naik ke atas. |
 | `7` | `BALANCE` | Menahan pendulum agar tegak. |
 
-Urutan operasi yang disarankan:
+Urutan operasi yang disarankan untuk GUI lama `main.py`:
 
 1. Jalankan Gazebo dari workspace yang dipilih.
 2. Jalankan `main.py` dengan `PENDULUM_PORT` sesuai serial workspace.
@@ -67,10 +67,11 @@ Urutan operasi yang disarankan:
 7. Klik `A` hanya saat pendulum sudah dekat tegak jika ingin memaksa balance.
 8. Klik `B` untuk stop.
 
-Catatan tombol `A`: pada semua workspace, jika `A` ditekan saat state belum
-masuk jendela capture, request balance disimpan dulu dan baru dipakai saat
-sudut, theta-dot, posisi cart, dan kecepatan cart sudah aman. Ini mencegah
-mode `BALANCE` aktif ketika cart masih jauh dari tengah.
+Catatan tombol balance: pada GUI lama `main.py` tombolnya `A`, sedangkan pada
+dashboard grafik tombolnya `S`. Pada semua workspace, jika perintah balance
+dikirim saat state belum masuk jendela capture, request balance disimpan dulu
+dan baru dipakai saat sudut, theta-dot, posisi cart, dan kecepatan cart sudah
+aman. Ini mencegah mode `BALANCE` aktif ketika cart masih jauh dari tengah.
 
 ## Topic utama
 
@@ -134,8 +135,23 @@ Sistem kontrol:
   (`lqr_q_x`, `lqr_q_x_dot`, `lqr_q_theta`, `lqr_q_theta_dot`, `lqr_r`).
 - Target regulasi balance adalah state tengah:
   `[x, x_dot, theta, theta_dot] = [0, 0, 0, 0]`.
+- Capture LQR dibuat lebih ketat agar mode `BALANCE` tidak masuk ketika cart
+  masih jauh dari tengah: `balance_capture_cart_pos_m = 0.035`,
+  `balance_auto_lock_cart_pos_m = 0.03`, `balance_capture_rate_rad_s = 0.35`,
+  dan kecepatan cart juga dibatasi.
+- Saat pertama masuk `BALANCE`, referensi LQR ditahan pada posisi cart saat
+  tertangkap, lalu diramp pelan-pelan ke `0 cm`. Ini mencegah hentakan besar
+  yang membuat cart berosilasi walaupun pendulum sudah tegak.
 - Error posisi cart dipakai sebagai bias sudut kecil pada LQR supaya cart
   kembali ke tengah lewat state feedback, bukan dorongan kasar.
+- Bobot LQR tetap model-based dan konservatif
+  (`lqr_q_x = 160`, `lqr_q_x_dot = 30`, `lqr_q_theta = 1000`,
+  `lqr_q_theta_dot = 600`) supaya cart kembali ke tengah tanpa force
+  berosilasi kasar.
+- Force LQR pada mode `BALANCE` diskalakan dengan
+  `balance_lqr_force_scale = 0.25`, sedangkan force limit tetap ada sebagai
+  pagar keselamatan. Ini membuat koreksi cart lebih halus dan tidak bergantung
+  pada hentakan effort besar.
 - Jika `balance_use_lqr` dimatikan manual, bridge masih punya fallback
   PID-like upright controller untuk debugging.
 - Ada assist engsel kecil untuk membantu simulasi.
@@ -149,6 +165,17 @@ Kapan dipakai:
   `pendulum_real_ws` dan PID di `pendulum_pid_ws`.
 - Untuk laporan yang ingin memisahkan metode LQR dari metode Manual Book dan
   PID.
+
+Validasi LQR center terbaru:
+
+- File: `data_exports/lqr_center_balance_validation_scaled_20260511.csv`.
+- Mode berpindah `SWING_UP -> BALANCE` pada sekitar `8.36 s`.
+- Fase `BALANCE` bertahan sekitar `28.10 s` pada run headless.
+- Rata-rata absolut sudut balance `0.0256 deg`.
+- Rata-rata absolut posisi cart balance `0.1534 cm`; setelah 50 sampel awal
+  transien, rata-rata absolut posisi cart `0.0810 cm` dan maksimum `0.6399 cm`.
+- Rata-rata absolut effort balance `0.1162 N`; setelah transien awal sekitar
+  `0.0004 N`.
 
 ### 2. `pendulum_real_ws`
 
@@ -371,15 +398,16 @@ colcon build --symlink-install
 ## Dashboard dengan gaya eksternal impulse
 
 Dashboard `pendulum_gazebo_plot_dashboard.py` bisa menjalankan Gazebo, grafik
-live, auto homing/swing/balance, lalu memberi gaya eksternal sekali saja
-sebagai impulse. Gaya eksternal ini adalah gaya ujung pendulum di simulasi; di
-bridge dikonversi menjadi torsi engsel, bukan gaya motor asli.
+live, auto homing/swing/balance, dan menyediakan tombol manual untuk memberi
+gaya eksternal sekali saja sebagai impulse. Gaya eksternal ini adalah gaya ujung
+pendulum di simulasi; di bridge dikonversi menjadi torsi engsel, bukan gaya
+motor asli.
 
 Grafik dashboard sekarang lebih halus secara visual dengan default
 `--sample-period 0.02`, `--plot-hz 30`, dan `--plot-smoothing-samples 3`.
 Smoothing ini hanya memengaruhi tampilan grafik, bukan topic ROS atau CSV.
 
-Contoh memberi impulse 2 N selama 0.20 s:
+Contoh menjalankan dashboard dengan besar impulse manual 2 N selama 0.20 s:
 
 ```bash
 cd /home/ammar/Documents/Pendulum
@@ -387,6 +415,15 @@ python3 pendulum_gazebo_plot_dashboard.py --workspace lqr --external-impulse-for
 python3 pendulum_gazebo_plot_dashboard.py --workspace real --external-impulse-force 2.0 --external-impulse-duration 0.20
 python3 pendulum_gazebo_plot_dashboard.py --workspace pid --external-impulse-force 2.0 --external-impulse-duration 0.20
 ```
+
+Tombol manual di window grafik:
+
+- `W`: homing
+- `A`: swing-up
+- `S`: balance
+- `D`: finish
+- `X`: memberi gaya eksternal sesuai `--external-impulse-force`
+- `Z`: homing + swing-up + balance otomatis
 
 Gunakan nilai negatif untuk dorongan arah sebaliknya, misalnya
 `--external-impulse-force -2.0`.
@@ -446,6 +483,11 @@ Klaim yang bisa dipertanggungjawabkan adalah simulasi model-based: state
 feedback LQR dihitung dari model linear, gaya tetap dibatasi, dan hasilnya
 dibaca sebagai effort joint Gazebo. Jangan klaim sebagai gaya motor fisik
 sebelum dibandingkan dengan log alat asli.
+
+Untuk target "balance di tengah", klaim yang aman adalah LQR menjaga sudut
+pendulum sambil meregulasi cart ke referensi tengah. Keberhasilannya harus
+dibaca dari `mode = BALANCE`, `degree` kecil, `cmX` dekat `0 cm`, dan effort
+cart yang tetap dalam batas; bukan dari visual saja.
 
 Pilih `pendulum_real_ws` kalau tujuan utamanya mempertahankan bentuk Manual
 Book, motor model, dan baseline yang sudah dibuat agar pendulum bisa tegak

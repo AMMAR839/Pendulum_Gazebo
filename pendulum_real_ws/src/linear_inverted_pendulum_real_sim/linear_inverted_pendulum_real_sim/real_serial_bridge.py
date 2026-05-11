@@ -15,10 +15,16 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64, Float64MultiArray
 
 try:
+    from gz.msgs10.boolean_pb2 import Boolean as GzBoolean
+    from gz.msgs10.entity_factory_pb2 import EntityFactory as GzEntityFactory
     from gz.msgs10.marker_pb2 import Marker as GzMarker
+    from gz.msgs10.pose_pb2 import Pose as GzPose
     from gz.transport13 import Node as GzTransportNode
 except ImportError:  # pragma: no cover - optional Gazebo GUI marker support
+    GzBoolean = None
+    GzEntityFactory = None
     GzMarker = None
+    GzPose = None
     GzTransportNode = None
 
 try:
@@ -41,6 +47,58 @@ MODE_SINE = 4
 MODE_FINISH = 5
 MODE_SWING_UP = 6
 MODE_BALANCE = 7
+
+EXTERNAL_FORCE_GAZEBO_VISUAL_ENABLED = False
+EXTERNAL_FORCE_WORLD_NAME = "empty"
+EXTERNAL_FORCE_MODEL_NAME = "external_force_visual"
+EXTERNAL_FORCE_MODEL_SDF = """
+<sdf version="1.7">
+  <model name="external_force_visual">
+    <static>true</static>
+    <pose>0 0.34 -8.0 0 0 0</pose>
+    <link name="indicator">
+      <visual name="force_bar">
+        <geometry>
+          <box>
+            <size>0.46 0.04 0.07</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1.0 0.48 0.0 1</ambient>
+          <diffuse>1.0 0.48 0.0 1</diffuse>
+          <emissive>1.0 0.18 0.0 1</emissive>
+        </material>
+      </visual>
+      <visual name="force_head">
+        <pose>0.27 0 0 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.07</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1.0 0.95 0.0 1</ambient>
+          <diffuse>1.0 0.95 0.0 1</diffuse>
+          <emissive>1.0 0.62 0.0 1</emissive>
+        </material>
+      </visual>
+      <visual name="force_tail">
+        <pose>-0.27 0 0 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.035</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1.0 0.05 0.0 1</ambient>
+          <diffuse>1.0 0.05 0.0 1</diffuse>
+          <emissive>0.75 0.0 0.0 1</emissive>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
+"""
 
 BUTTON_A = 1 << 0
 BUTTON_B = 1 << 1
@@ -73,7 +131,7 @@ class SimSerialBridge(Node):
         self.declare_parameter("pendulum_mass_kg", 0.20)
         self.declare_parameter("pendulum_com_m", 0.20)
         self.declare_parameter("pendulum_length_m", 0.40)
-        self.declare_parameter("external_force_visual_hold_s", 0.65)
+        self.declare_parameter("external_force_visual_hold_s", 10.0)
         self.declare_parameter("swing_gain", 2.30)
         self.declare_parameter("swing_centering_gain", 0.42)
         self.declare_parameter("swing_damping_gain", 0.12)
@@ -338,7 +396,17 @@ class SimSerialBridge(Node):
         self.external_force_marker_visible = False
         self.external_force_marker_hold_until = 0.0
         self.external_force_marker_last_force_n = 0.0
-        if GzTransportNode is not None and GzMarker is not None:
+        self.external_force_visual_model_ready = False
+        self.external_force_visual_model_visible = False
+        self.external_force_visual_model_last_key = None
+        self.external_force_visual_model_last_try = 0.0
+        self.external_force_visual_model_last_update = 0.0
+        self.external_force_visual_model_warned = False
+        if (
+            EXTERNAL_FORCE_GAZEBO_VISUAL_ENABLED
+            and GzTransportNode is not None
+            and GzMarker is not None
+        ):
             try:
                 self.gz_marker_node = GzTransportNode()
                 self.external_force_marker_pub = self.gz_marker_node.advertise(
@@ -553,8 +621,121 @@ class SimSerialBridge(Node):
     def _external_disturbance_torque_cb(self, msg):
         self.external_disturbance_torque_nm = float(msg.data)
 
+    def _ensure_external_force_visual_model(self):
+        if (
+            self.gz_marker_node is None
+            or GzEntityFactory is None
+            or GzBoolean is None
+        ):
+            return False
+        if self.external_force_visual_model_ready:
+            return True
+
+        now = time.monotonic()
+        if now - self.external_force_visual_model_last_try < 0.5:
+            return False
+        self.external_force_visual_model_last_try = now
+
+        request = GzEntityFactory()
+        request.sdf = EXTERNAL_FORCE_MODEL_SDF
+        request.name = EXTERNAL_FORCE_MODEL_NAME
+        request.allow_renaming = False
+        try:
+            ok, _response = self.gz_marker_node.request(
+                f"/world/{EXTERNAL_FORCE_WORLD_NAME}/create",
+                request,
+                GzEntityFactory,
+                GzBoolean,
+                300,
+            )
+        except Exception as exc:
+            if not self.external_force_visual_model_warned:
+                self.get_logger().warning(
+                    f"Gazebo external-force visual create unavailable: {exc}"
+                )
+                self.external_force_visual_model_warned = True
+            return False
+
+        self.external_force_visual_model_ready = bool(ok)
+        return self.external_force_visual_model_ready
+
+    def _set_external_force_visual_model(self, force_n, visible):
+        if GzPose is None or GzBoolean is None:
+            return
+        if not visible and not self.external_force_visual_model_ready:
+            return
+        if visible and not self._ensure_external_force_visual_model():
+            return
+
+        sign = 1.0 if force_n >= 0.0 else -1.0
+        key = ("visible", sign) if visible else ("hidden", 0.0)
+        now = time.monotonic()
+        if (
+            key == self.external_force_visual_model_last_key
+            and now - self.external_force_visual_model_last_update < 0.5
+        ):
+            return
+
+        pose = GzPose()
+        pose.name = EXTERNAL_FORCE_MODEL_NAME
+        pose.position.x = sign * 0.06 if visible else 0.0
+        pose.position.y = 0.34
+        pose.position.z = 0.78 if visible else -8.0
+        pose.orientation.w = 1.0 if sign >= 0.0 else 0.0
+        pose.orientation.z = 0.0 if sign >= 0.0 else 1.0
+
+        try:
+            ok, response = self.gz_marker_node.request(
+                f"/world/{EXTERNAL_FORCE_WORLD_NAME}/set_pose",
+                pose,
+                GzPose,
+                GzBoolean,
+                120,
+            )
+        except Exception as exc:
+            if not self.external_force_visual_model_warned:
+                self.get_logger().warning(
+                    f"Gazebo external-force visual pose unavailable: {exc}"
+                )
+                self.external_force_visual_model_warned = True
+            return
+
+        if ok and getattr(response, "data", False):
+            self.external_force_visual_model_visible = visible
+            self.external_force_visual_model_last_key = key
+            self.external_force_visual_model_last_update = now
+        elif visible:
+            self.external_force_visual_model_ready = False
+
+    def _delete_external_force_markers(self):
+        self._set_external_force_visual_model(0.0, False)
+        if self.external_force_marker_pub is not None and GzMarker is not None:
+            for marker_id in (1, 2, 3, 4, 5):
+                marker = GzMarker()
+                marker.ns = "pendulum_external_force"
+                marker.id = marker_id
+                marker.action = GzMarker.DELETE_MARKER
+                self.external_force_marker_pub.publish(marker)
+        self.external_force_marker_visible = False
+
+    def _external_force_marker_position(self, force_n, arrow_length):
+        sign = 1.0 if force_n >= 0.0 else -1.0
+        return (sign * min(arrow_length * 0.08, 0.10), 0.34, 0.78)
+
+    def _set_marker_color(self, marker, red, green, blue, alpha=1.0):
+        marker.material.ambient.r = red
+        marker.material.ambient.g = green
+        marker.material.ambient.b = blue
+        marker.material.ambient.a = alpha
+        marker.material.diffuse.r = red
+        marker.material.diffuse.g = green
+        marker.material.diffuse.b = blue
+        marker.material.diffuse.a = alpha
+
     def _publish_external_force_marker(self, force_n):
-        if self.external_force_marker_pub is None or GzMarker is None:
+        if not EXTERNAL_FORCE_GAZEBO_VISUAL_ENABLED:
+            return
+        if self.gz_marker_node is None:
             return
         now = time.monotonic()
         if abs(force_n) < 1e-6:
@@ -562,12 +743,7 @@ class SimSerialBridge(Node):
                 force_n = self.external_force_marker_last_force_n
             else:
                 if self.external_force_marker_visible:
-                    marker = GzMarker()
-                    marker.ns = "pendulum_external_force"
-                    marker.id = 1
-                    marker.action = GzMarker.DELETE_MARKER
-                    self.external_force_marker_pub.publish(marker)
-                    self.external_force_marker_visible = False
+                    self._delete_external_force_markers()
                 return
         else:
             self.external_force_marker_last_force_n = force_n
@@ -577,37 +753,109 @@ class SimSerialBridge(Node):
 
         if abs(force_n) < 1e-6:
             if self.external_force_marker_visible:
-                marker = GzMarker()
-                marker.ns = "pendulum_external_force"
-                marker.id = 1
-                marker.action = GzMarker.DELETE_MARKER
-                self.external_force_marker_pub.publish(marker)
-                self.external_force_marker_visible = False
+                self._delete_external_force_markers()
             return
+
+        arrow_length = clamp(abs(force_n) * 0.18, 0.28, 0.55)
+        sign = 1.0 if force_n >= 0.0 else -1.0
+        lifetime_s = int(math.ceil(self.external_force_visual_hold_s))
+        marker_x, marker_y, marker_z = self._external_force_marker_position(
+            force_n,
+            arrow_length,
+        )
+        self._set_external_force_visual_model(force_n, True)
+
+        if self.external_force_marker_pub is None or GzMarker is None:
+            self.external_force_marker_visible = True
+            return
+
+        bar = GzMarker()
+        bar.ns = "pendulum_external_force"
+        bar.id = 4
+        bar.action = GzMarker.ADD_MODIFY
+        bar.type = GzMarker.BOX
+        bar.visibility = GzMarker.ALL
+        bar.pose.position.x = marker_x
+        bar.pose.position.y = marker_y
+        bar.pose.position.z = marker_z
+        bar.pose.orientation.w = 1.0 if force_n >= 0.0 else 0.0
+        bar.pose.orientation.z = 0.0 if force_n >= 0.0 else 1.0
+        bar.scale.x = arrow_length * 0.80
+        bar.scale.y = 0.025
+        bar.scale.z = 0.055
+        bar.lifetime.sec = lifetime_s
+        self._set_marker_color(bar, 1.0, 0.58, 0.0)
+        self.external_force_marker_pub.publish(bar)
 
         marker = GzMarker()
         marker.ns = "pendulum_external_force"
         marker.id = 1
         marker.action = GzMarker.ADD_MODIFY
         marker.type = GzMarker.ARROW
-        marker.parent = "linear_inverted_pendulum::pendulum_link"
-        marker.pose.position.x = 0.0
-        marker.pose.position.y = -0.20
-        marker.pose.position.z = -self.pendulum_length
+        marker.visibility = GzMarker.ALL
+        marker.pose.position.x = marker_x
+        marker.pose.position.y = marker_y
+        marker.pose.position.z = marker_z
         marker.pose.orientation.w = 1.0 if force_n >= 0.0 else 0.0
         marker.pose.orientation.z = 0.0 if force_n >= 0.0 else 1.0
-        marker.scale.x = clamp(abs(force_n) * 0.16, 0.18, 0.60)
+        marker.scale.x = arrow_length
         marker.scale.y = 0.045
         marker.scale.z = 0.045
-        marker.material.ambient.r = 1.0
-        marker.material.ambient.g = 0.38
-        marker.material.ambient.b = 0.0
-        marker.material.ambient.a = 1.0
-        marker.material.diffuse.r = 1.0
-        marker.material.diffuse.g = 0.42
-        marker.material.diffuse.b = 0.0
-        marker.material.diffuse.a = 1.0
+        marker.lifetime.sec = lifetime_s
+        self._set_marker_color(marker, 1.0, 0.18, 0.0)
         self.external_force_marker_pub.publish(marker)
+
+        point = GzMarker()
+        point.ns = "pendulum_external_force"
+        point.id = 2
+        point.action = GzMarker.ADD_MODIFY
+        point.type = GzMarker.SPHERE
+        point.visibility = GzMarker.ALL
+        point.pose.position.x = marker_x + sign * arrow_length * 0.50
+        point.pose.position.y = marker_y
+        point.pose.position.z = marker_z
+        point.pose.orientation.w = 1.0
+        point.scale.x = 0.075
+        point.scale.y = 0.075
+        point.scale.z = 0.075
+        point.lifetime.sec = lifetime_s
+        self._set_marker_color(point, 1.0, 0.86, 0.0)
+        self.external_force_marker_pub.publish(point)
+
+        tail = GzMarker()
+        tail.ns = "pendulum_external_force"
+        tail.id = 5
+        tail.action = GzMarker.ADD_MODIFY
+        tail.type = GzMarker.SPHERE
+        tail.visibility = GzMarker.ALL
+        tail.pose.position.x = marker_x - sign * arrow_length * 0.50
+        tail.pose.position.y = marker_y
+        tail.pose.position.z = marker_z
+        tail.pose.orientation.w = 1.0
+        tail.scale.x = 0.04
+        tail.scale.y = 0.04
+        tail.scale.z = 0.04
+        tail.lifetime.sec = lifetime_s
+        self._set_marker_color(tail, 1.0, 0.24, 0.0)
+        self.external_force_marker_pub.publish(tail)
+
+        label = GzMarker()
+        label.ns = "pendulum_external_force"
+        label.id = 3
+        label.action = GzMarker.ADD_MODIFY
+        label.type = GzMarker.TEXT
+        label.visibility = GzMarker.ALL
+        label.text = f"EXT {force_n:+.1f} N"
+        label.pose.position.x = marker_x
+        label.pose.position.y = marker_y + 0.03
+        label.pose.position.z = marker_z + 0.11
+        label.pose.orientation.w = 1.0
+        label.scale.x = 0.10
+        label.scale.y = 0.10
+        label.scale.z = 0.10
+        label.lifetime.sec = lifetime_s
+        self._set_marker_color(label, 1.0, 0.92, 0.0)
+        self.external_force_marker_pub.publish(label)
         self.external_force_marker_visible = True
 
     def _serial_reader(self):
