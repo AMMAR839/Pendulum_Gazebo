@@ -9,21 +9,21 @@ Berikut adalah demonstrasi simulasi dari 3 metode yang diuji:
 ## 1. Metode LQR (Linear Quadratic Regulator)
 Metode ini menggunakan algoritma kontrol optimal LQR yang didasarkan pada model state-space linear dari sistem pendulum. Algoritma ini menghitung nilai gain yang meminimalkan *cost function* untuk menyeimbangkan pendulum dengan pergerakan cart dan respons energi yang paling efisien.
 
-<video src="./videos/lqr_impulse_balance_20260512.mp4" controls="controls" style="max-width: 100%;"></video>
+https://github.com/AMMAR839/Pendulum_Gazebo/raw/main/videos/lqr_impulse_balance_20260512.mp4
 
 *(Jika video di atas tidak dapat diputar, Anda bisa melihatnya secara langsung di `videos/lqr_impulse_balance_20260512.mp4`)*
 
 ## 2. Metode PID (Proportional-Integral-Derivative)
 Metode klasik PID diterapkan pada sistem ini. Meskipun tidak membutuhkan model matematika sistem yang mendetail seperti LQR, *tuning* (penalaan) nilai Proportional, Integral, dan Derivative yang tepat terbukti cukup stabil dalam merespons gangguan eksternal (impulse).
 
-<video src="./videos/pid_impulse_balance_20260512.mp4" controls="controls" style="max-width: 100%;"></video>
+https://github.com/AMMAR839/Pendulum_Gazebo/raw/main/videos/pid_impulse_balance_20260512.mp4
 
 *(Jika video di atas tidak dapat diputar, Anda bisa melihatnya secara langsung di `videos/pid_impulse_balance_20260512.mp4`)*
 
 ## 3. Metode Full-State Feedback (Real-Style)
 Metode ini menggunakan controller bertipe full-state feedback yang arsitekturnya dibuat sedekat mungkin dengan panduan *Manual Book* alat aslinya (real system). Metode ini secara khusus berfokus meniru perilaku dinamika *controller hardware* aslinya.
 
-<video src="./videos/real_impulse_balance_20260512.mp4" controls="controls" style="max-width: 100%;"></video>
+https://github.com/AMMAR839/Pendulum_Gazebo/raw/main/videos/real_impulse_balance_20260512.mp4
 
 *(Jika video di atas tidak dapat diputar, Anda bisa melihatnya secara langsung di `videos/real_impulse_balance_20260512.mp4`)*
 
