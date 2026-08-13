@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ROS 2 / Colcon workspaces
+build/
+install/
+log/
+
+# Application Logs
+logs/
+udp_logs/
+*.log
+
+# IDEs and Editors
+.vscode/
+.idea/
+.codex/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

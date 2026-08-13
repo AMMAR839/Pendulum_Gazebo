@@ -1,1 +1,0 @@
-/home/ammar/Documents/Pendulum/pendulum_real_ws/src/linear_inverted_pendulum_real_sim/README.md

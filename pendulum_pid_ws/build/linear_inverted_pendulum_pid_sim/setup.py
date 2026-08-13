@@ -1,1 +1,0 @@
-/home/ammar/Documents/Pendulum/pendulum_pid_ws/src/linear_inverted_pendulum_pid_sim/setup.py

@@ -1,2 +1,0 @@
-[console_scripts]
-pid_serial_bridge = linear_inverted_pendulum_pid_sim.pid_serial_bridge:main

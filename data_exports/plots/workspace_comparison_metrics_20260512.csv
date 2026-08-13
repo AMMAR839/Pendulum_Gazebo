@@ -1,0 +1,4 @@
+workspace,smooth_swing_peak_force_n,smooth_swing_mean_force_n,smooth_balance_peak_force_n,smooth_balance_mean_force_n,smooth_swing_duration_s,smooth_balance_duration_s,smooth_tail_strict_300,smooth_hinge_topic_peak_nm,impulses_n,impulse_max_external_n,impulse_max_balance_angle_deg,impulse_max_cart_cm,impulse_tail_strict_120
+lqr,115.039,4.222,1.247,0.015,8.282,71.953,300,0.000000,+0.20; -0.20; +0.30,0.300,12.897,24.240,120
+real,130.000,25.735,12.120,0.112,11.284,68.926,300,0.000000,+0.30; -0.30; +0.50,0.500,17.115,32.585,120
+pid,94.725,4.313,0.929,0.044,8.234,71.996,300,0.000000,+0.30; -0.30; +0.50,0.500,17.237,33.409,120
