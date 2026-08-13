@@ -9,23 +9,29 @@ Berikut adalah demonstrasi simulasi dari 3 metode yang diuji:
 ## 1. Metode LQR (Linear Quadratic Regulator)
 Metode ini menggunakan algoritma kontrol optimal LQR yang didasarkan pada model state-space linear dari sistem pendulum. Algoritma ini menghitung nilai gain yang meminimalkan *cost function* untuk menyeimbangkan pendulum dengan pergerakan cart dan respons energi yang paling efisien.
 
-![Metode LQR](videos/lqr_impulse_balance_20260512.gif)
+**Visualisasi 3D Gazebo Harmonic:**  
+![Metode LQR 3D](videos/lqr.gif)
 
-*(Jika video di atas tidak dapat diputar, Anda bisa melihatnya secara langsung di `videos/lqr_impulse_balance_20260512.mp4`)*
+**Grafik Animasi Telemetri (2D):**  
+![Metode LQR 2D](videos/lqr_impulse_balance_20260512.gif)
 
 ## 2. Metode PID (Proportional-Integral-Derivative)
 Metode klasik PID diterapkan pada sistem ini. Meskipun tidak membutuhkan model matematika sistem yang mendetail seperti LQR, *tuning* (penalaan) nilai Proportional, Integral, dan Derivative yang tepat terbukti cukup stabil dalam merespons gangguan eksternal (impulse).
 
-![Metode PID](videos/pid_impulse_balance_20260512.gif)
+**Visualisasi 3D Gazebo Harmonic:**  
+![Metode PID 3D](videos/pid.gif)
 
-*(Jika video di atas tidak dapat diputar, Anda bisa melihatnya secara langsung di `videos/pid_impulse_balance_20260512.mp4`)*
+**Grafik Animasi Telemetri (2D):**  
+![Metode PID 2D](videos/pid_impulse_balance_20260512.gif)
 
 ## 3. Metode Full-State Feedback (Real-Style)
 Metode ini menggunakan controller bertipe full-state feedback yang arsitekturnya dibuat sedekat mungkin dengan panduan *Manual Book* alat aslinya (real system). Metode ini secara khusus berfokus meniru perilaku dinamika *controller hardware* aslinya.
 
-![Metode Real-Style](videos/real_impulse_balance_20260512.gif)
+**Visualisasi 3D Gazebo Harmonic:**  
+![Metode Real-Style 3D](videos/feeback.gif)
 
-*(Jika video di atas tidak dapat diputar, Anda bisa melihatnya secara langsung di `videos/real_impulse_balance_20260512.mp4`)*
+**Grafik Animasi Telemetri (2D):**  
+![Metode Real-Style 2D](videos/real_impulse_balance_20260512.gif)
 
 ---
 
