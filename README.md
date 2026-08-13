@@ -41,6 +41,6 @@ Supaya pengunjung halaman utama ini tidak kebingungan dengan hal yang terlalu te
 
 Untuk membaca **Panduan Menjalankan Simulasi** dan detail teknis lainnya, silakan klik tautan di bawah ini:
 
-👉 **[TEKNIS_GAZEBO.md](./TEKNIS_GAZEBO.md)**
+**[TEKNIS_GAZEBO.md](./TEKNIS_GAZEBO.md)**
 
 *(Jika Anda butuh penjelasan algoritma, dokumen dasar teori tersedia di [DOKUMENTASI_METODE_DAN_DASAR_TEORI.md](./DOKUMENTASI_METODE_DAN_DASAR_TEORI.md))*
